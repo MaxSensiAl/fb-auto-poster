@@ -1,0 +1,28 @@
+name: Auto Facebook Post Bot
+
+on:
+  schedule:
+    - cron: '*/30 * * * *' # हर 30 मिनट में चलेगा
+  workflow_dispatch: # मैन्युअल रूप से चलाने के लिए
+
+jobs:
+  post-to-fb:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install Dependencies
+      run: |
+        pip install requests
+
+    - name: Run FB Bot Script
+      env:
+        FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
+        FB_ACCESS_TOKEN: ${{ secrets.FB_ACCESS_TOKEN }}
+      run: python fb_bot.py
