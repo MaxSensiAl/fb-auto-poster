@@ -1,33 +1,30 @@
-name: Auto Facebook Post Bot
+name: FB Auto Poster Bot
 
 on:
   schedule:
-    - cron: '*/30 * * * *' # यह हर 30 मिनट में ट्रिगर होगा
-  workflow_dispatch: # मैनुअल रूप से चलाने के लिए
+    - cron: '*/30 * * * *'  # हर 30 मिनट में ऑटोमैटिक चलेगा
+  workflow_dispatch:        # जब आप चाहें मैन्युअली भी चला सकते हैं
 
 jobs:
-  post-to-fb:
+  post-image:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
+      - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Setup Python
+      - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: '3.10'
 
       - name: Install Dependencies
         run: |
-          pip install requests
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-      - name: Run FB Bot Script
+      - name: Run FB Bot
         env:
           FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
           FB_ACCESS_TOKEN: ${{ secrets.FB_ACCESS_TOKEN }}
-        run: |
-          # 0 से 180 सेकंड (3 मिनट) के बीच रैंडम डिले जनरेट करेगा
-          DELAY=$(( RANDOM % 181 ))
-          echo "Waiting for $DELAY seconds to randomize post timing..."
-          sleep $DELAY
-          python fb_bot.py
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: python fb_bot.py
