@@ -141,57 +141,6 @@ def learn_style_from_instagram():
     return selected_prompt
 
 # ============================================
-# 🍪 MANUAL COOKIES USE (Option 1)
-# ============================================
-
-def learn_style_with_cookies():
-    """
-    अगर आपके पास Cookies JSON File है तो इसका उपयोग करें
-    """
-    print("🍪 Cookies के साथ Instagram Login...")
-    
-    if not os.path.exists("cookies.json"):
-        print("⚠️ cookies.json नहीं मिली! Skip कर रहा हूँ...")
-        return create_default_prompt()
-    
-    with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=True,
-            args=['--no-sandbox']
-        )
-        
-        context = browser.new_context(
-            storage_state="cookies.json",  # ✅ Cookies Load करें
-            viewport={'width': 1280, 'height': 720}
-        )
-        
-        page = context.new_page()
-        
-        try:
-            page.goto(f'https://www.instagram.com/{TARGET_PROFILE}/')
-            page.wait_for_timeout(5000)
-            
-            # अगर Cookies काम करें तो Profile Load होगी
-            print("✅ Cookies Login Successful!")
-            
-            # पोस्ट लिंक निकालें
-            post_links = page.eval_on_selector_all(
-                'a[href*="/p/"]',
-                'els => els.map(el => el.href)'
-            )
-            
-            unique_links = list(dict.fromkeys(post_links))
-            print(f"✅ {len(unique_links)} पोस्ट मिले")
-            
-            browser.close()
-            
-        except Exception as e:
-            print(f"❌ Cookies Error: {e}")
-            browser.close()
-    
-    return create_default_prompt()
-
-# ============================================
 # 🎨 2. AI से PHOTO GENERATE करें
 # ============================================
 
@@ -293,12 +242,84 @@ def create_placeholder_image(filename="placeholder.jpg"):
         return filename
 
 # ============================================
-# 📝 3. CAPTION GENERATE करें
+# 📷 PHOTO QUALITY CHECK
+# ============================================
+
+def check_image_quality(image_path):
+    """
+    Photo Quality Check - Resolution, Size, Format
+    """
+    print("📷 Photo Quality Check कर रहा हूँ...")
+    
+    try:
+        # Check if file exists
+        if not os.path.exists(image_path):
+            print("❌ File exists नहीं है!")
+            return False
+        
+        # File Size Check
+        file_size = os.path.getsize(image_path)
+        print(f"📊 File Size: {file_size/1024:.1f} KB")
+        
+        if file_size < 10000:  # 10KB से कम
+            print("❌ File Size बहुत छोटी है! (< 10KB)")
+            return False
+        
+        if file_size < 50000:  # 50KB से कम - Warning
+            print("⚠️ File Size थोड़ी छोटी है ( < 50KB)")
+        
+        # Try to open with PIL
+        try:
+            from PIL import Image
+            img = Image.open(image_path)
+            width, height = img.size
+            print(f"📐 Resolution: {width}x{height}")
+            
+            # Resolution Check
+            if width < 512 or height < 512:
+                print(f"❌ Resolution बहुत कम है! ({width}x{height})")
+                return False
+            
+            if width < 768 or height < 768:
+                print(f"⚠️ Resolution थोड़ी कम है ({width}x{height})")
+            
+            # Format Check
+            print(f"📁 Format: {img.format}")
+            
+            # Check if image is valid
+            img.verify()
+            print("✅ Image Valid है!")
+            
+            # Reopen after verify
+            img = Image.open(image_path)
+            
+            # Color Mode Check
+            print(f"🎨 Color Mode: {img.mode}")
+            
+            print("✅ Photo Quality Check Passed!")
+            return True
+            
+        except ImportError:
+            print("⚠️ PIL installed नहीं है, basic check कर रहा हूँ...")
+            # Basic check without PIL
+            if file_size > 10000:
+                print(f"✅ File Size ठीक है: {file_size/1024:.1f} KB")
+                return True
+            else:
+                print("❌ File Size बहुत छोटी है!")
+                return False
+                
+    except Exception as e:
+        print(f"❌ Quality Check Error: {e}")
+        return False
+
+# ============================================
+# 📝 3. CAPTION GENERATE करें (FIXED EMOJIS)
 # ============================================
 
 def generate_caption():
     """
-    Viral Instagram-style Caption with variety
+    Viral Instagram-style Caption - Fixed Emojis ✅
     """
     hour = datetime.now().hour
     if 6 <= hour < 12:
@@ -313,7 +334,7 @@ def generate_caption():
     captions = [
         f"""{time_text}
 
-✨ AI Generated Perfect Look!
+✨ AI Generated Perfect Look! 🤩
 
 आपको कैसा लगा? 🤔
 👇 Comment में बताओ:
@@ -326,7 +347,7 @@ def generate_caption():
         
         f"""{time_text}
 
-🔥 AI ने बनाया ये Stunning Look!
+🔥 AI ने बनाया ये Stunning Look! 💃
 
 क्या आपको लगता है ये Real है या AI? 🤔
 👇 3 Second mein comment karo:
@@ -339,7 +360,7 @@ def generate_caption():
         
         f"""{time_text}
 
-💃 AI Generated - Royal Indian Beauty!
+💃 AI Generated - Royal Indian Beauty! 👑
 
 कौन सा style सबसे best लगा?
 👇 Comment में बताओ:
@@ -408,34 +429,6 @@ def cleanup_files(*files):
                 pass
 
 # ============================================
-# 📝 6. COOKIES CREATE (एक बार मैन्युअली)
-# ============================================
-
-def create_cookies():
-    """
-    एक बार मैन्युअली चलाकर Cookies Save करें
-    """
-    print("🍪 Cookies बना रहा हूँ... कृपया मैन्युअली Login करें")
-    
-    if not IG_USERNAME or not IG_PASSWORD:
-        print("❌ Instagram Credentials नहीं मिले!")
-        return False
-    
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)
-        context = browser.new_context()
-        page = context.new_page()
-        
-        page.goto('https://www.instagram.com/')
-        input("✅ ब्राउज़र खुला है। कृपया मैन्युअली Login करें और Enter दबाएँ...")
-        
-        # Cookies Save करें
-        context.storage_state(path="cookies.json")
-        print("✅ cookies.json Save हो गई!")
-        browser.close()
-        return True
-
-# ============================================
 # 🚀 6. MAIN BOT
 # ============================================
 
@@ -463,10 +456,26 @@ def main():
             print("❌ फोटो नहीं बन पाई!")
             return False
         
-        # STEP 3: कैप्शन बनाएं
+        # ✅ STEP 2.5: Photo Quality Check
+        print("\n📷 STEP 2.5: Photo Quality Check...")
+        quality_ok = check_image_quality(image_path)
+        
+        if not quality_ok:
+            print("⚠️ Quality Check Fail हुई! नई फोटो बना रहा हूँ...")
+            # Retry with simple prompt
+            image_path = generate_ai_image_simple("retry_photo.jpg")
+            if image_path:
+                # Check quality again
+                quality_ok = check_image_quality(image_path)
+                if not quality_ok:
+                    print("⚠️ Quality Check फिर Fail हुई! Placeholder use कर रहा हूँ...")
+                    image_path = create_placeholder_image("placeholder_final.jpg")
+        
+        # STEP 3: कैप्शन बनाएं (Fixed Emojis)
         print("\n📝 STEP 3: कैप्शन बना रहा हूँ...")
         caption = generate_caption()
         print(f"✅ कैप्शन तैयार ({len(caption)} अक्षर)")
+        print(f"📝 Caption Preview: {caption[:150]}...")
         
         # STEP 4: Facebook पर पोस्ट करें
         print("\n📤 STEP 4: Facebook पर पोस्ट कर रहा हूँ...")
@@ -474,7 +483,7 @@ def main():
         
         # STEP 5: क्लीनअप
         print("\n🧹 STEP 5: क्लीनअप...")
-        cleanup_files(image_path, "ref_post_1.jpg", "ref_post_2.jpg", "ref_post_3.jpg")
+        cleanup_files(image_path, "ref_post_1.jpg", "ref_post_2.jpg", "ref_post_3.jpg", "retry_photo.jpg", "placeholder_final.jpg")
         
         elapsed = time.time() - start_time
         
@@ -500,8 +509,5 @@ def main():
 # ============================================
 
 if __name__ == "__main__":
-    # अगर Cookies बनानी है तो इस Function को Call करें
-    # create_cookies()  # एक बार मैन्युअली चलाएँ
-    
     success = main()
     sys.exit(0 if success else 1)
