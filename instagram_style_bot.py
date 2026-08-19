@@ -29,12 +29,12 @@ print(f"✅ Target: @{TARGET_PROFILE}")
 print(f"✅ Facebook Page: {FB_PAGE_ID[:3]}***")
 
 # ============================================
-# 🌐 मजबूत नेटवर्क सेशन सेटअप (DNS/NameResolution Error को रोकने के लिए)
+# 🌐 मजबूत नेटवर्क सेशन सेटअप
 # ============================================
 session = requests.Session()
 retry_strategy = Retry(
-    total=5,  # कुल 5 बार प्रयास करेगा
-    backoff_factor=2,  # हर प्रयास के बीच थोड़ा समय बढ़ाएगा
+    total=5,
+    backoff_factor=2,
     status_forcelist=[429, 500, 502, 503, 504],
     raise_on_status=False
 )
@@ -43,69 +43,87 @@ session.mount("https://", adapter)
 session.mount("http://", adapter)
 
 # ============================================
-# 🎨 MULTIPLE PROMPTS (अत्यंत यथार्थवादी चेहरों के लिए)
+# 🎨 FACE-FOCUSED PROMPTS (बेहतर चेहरे के लिए)
 # ============================================
 
 PROMPTS = [
-    # 1. Traditional Indian Bride
+    # 1. Traditional Indian Bride - Face Focus
     """
-    Knee-up portrait of a gorgeous Indian bride, standing pose, wearing a highly detailed traditional red lehenga.
-    Hyper-realistic face, highly detailed symmetrical eyes, perfect nose and lips, natural realistic skin texture, photorealistic.
-    Palace courtyard backdrop, soft cinematic lighting, dslr quality, award winning photography.
+    Close-up portrait of a gorgeous Indian bride, 
+    symmetrical facial features, highly detailed realistic eyes, 
+    perfect nose and lips, natural skin texture with visible pores,
+    traditional red bridal lehenga visible in frame,
+    soft golden hour lighting, dreamy bokeh background,
+    8k resolution, photorealistic, professional photography,
+    Canon EOS R5, 85mm lens, f/1.4, sharp focus on face.
     """,
     
-    # 2. Modern Bollywood Style
+    # 2. Modern Bollywood Style - Face Focus
     """
-    A stunning three-quarter fashion shot of a Bollywood actress standing elegantly in modern designer fusion wear.
-    Highly detailed realistic facial features, perfect eyes, natural skin pores, symmetrical face, sharp focus on face.
-    Studio background, professional lighting, realistic shadows, elegant pose.
+    Close-up portrait of a stunning Bollywood actress,
+    symmetrical face, detailed expressive eyes, natural skin texture,
+    modern fusion wear, professional studio lighting,
+    soft shadows, high fashion editorial style,
+    Sony A7R IV, 50mm lens, f/1.8, sharp focus on face.
     """,
     
-    # 3. South Indian Beauty
+    # 3. South Indian Beauty - Face Focus
     """
-    A beautiful three-quarter standing portrait of a South Indian woman in a rich silk kanjivaram saree.
-    Intricate gold border, traditional temple jewelry, jasmine flowers in hair.
-    Flawless symmetrical face, realistic detailed eyes, natural warm skin, warm natural sunlight.
+    Close-up portrait of a South Indian woman,
+    symmetrical facial features, clear realistic eyes, warm skin tone,
+    silk saree with gold border visible, temple jewelry,
+    natural sunlight, sharp focus on face,
+    Nikon Z9, 85mm lens, vibrant colors.
     """,
     
-    # 4. Royal Rajasthani Style
+    # 4. Royal Rajasthani Style - Face Focus
     """
-    A royal Rajasthani woman standing in a palace courtyard, knee-up shot.
-    Detailed traditional lehenga and silver jewelry.
-    Symmetrical face, perfect realistic eyes, natural skin texture, majestic look.
-    Warm sunset lighting, dslr quality, highly detailed.
+    Close-up portrait of a royal Rajasthani woman,
+    symmetrical face, detailed expressive eyes, natural skin,
+    traditional jewelry, desert palace background,
+    golden hour lighting, sharp focus on face,
+    Leica M11, 50mm Summilux.
     """,
     
-    # 5. Modern Minimalist
+    # 5. Festival Special - Face Focus
     """
-    Modern Indian woman standing elegantly, knee-up shot in a simple pastel designer saree.
-    Clean symmetrical face, realistic eyes, natural skin, subtle jewelry.
-    Minimalist modern background, soft natural daylight, contemporary style, photorealistic.
+    Close-up portrait of a happy Indian woman celebrating,
+    symmetrical facial features, joyful expression, detailed eyes,
+    traditional lehenga, diya background,
+    festive warm lighting, sharp focus on face,
+    Canon EOS R3, 24-70mm lens.
     """,
     
-    # 6. Festival Special
+    # 6. Wedding Guest - Face Focus
     """
-    A happy Indian woman celebrating festival, knee-up shot wearing a detailed traditional lehenga.
-    Vibrant colors, happy realistic expression, symmetrical face, detailed eyes.
-    Background decorated with glowing traditional oil lamps (diyas), festive warm light.
+    Close-up portrait of a beautiful woman in wedding guest attire,
+    symmetrical face, natural skin texture, detailed eyes,
+    elegant saree or lehenga, soft romantic lighting,
+    dreamy background, sharp focus on face.
     """,
     
-    # 7. Wedding Guest Look
+    # 7. Kashmiri Beauty - Face Focus
     """
-    A beautiful Indian woman in wedding guest attire, three-quarter standing shot showing designer anarkali wear.
-    Symmetrical facial features, highly detailed realistic eyes, natural skin structure.
-    Soft romantic lighting, elegant wedding hall background with gentle bokeh, dslr photography.
+    Close-up portrait of a Kashmiri woman,
+    symmetrical facial features, clear realistic eyes, fair skin,
+    traditional pheran, snow-capped mountains background,
+    natural winter lighting, sharp focus on face,
+    Nikon D850, 70-200mm lens.
     """,
     
-    # 8. Kashmiri Beauty
+    # 8. Ultra Realistic Face - Special
     """
-    A Kashmiri woman standing gracefully, knee-up shot in a traditional embroidered pheran.
-    Symmetrical face, highly detailed realistic eyes, natural fair skin.
-    Snowy mountains background, soft winter sunlight, realistic textures, sharp focus.
+    Ultra realistic close-up portrait of an Indian woman,
+    hyper-detailed symmetrical facial features, 
+    highly detailed realistic eyes with catchlights,
+    natural skin texture, visible pores, perfect lighting,
+    professional photography, 8k resolution,
+    sharp focus on face, cinematic, photorealistic.
     """
 ]
 
 def create_default_prompt():
+    """Face-focused prompt with better quality"""
     return random.choice(PROMPTS)
 
 # ============================================
@@ -120,7 +138,7 @@ def learn_style_from_instagram():
     return selected_prompt
 
 # ============================================
-# 🎨 2. HUGGING FACE से PHOTO GENERATE करें (High Quality)
+# 🎨 2. AI से PHOTO GENERATE करें (Face Focus)
 # ============================================
 
 def generate_ai_image_hf(prompt_text, model_id="black-forest-labs/FLUX.1-schnell", filename="generated_photo.jpg"):
@@ -139,14 +157,13 @@ def generate_ai_image_hf(prompt_text, model_id="black-forest-labs/FLUX.1-schnell
         "inputs": prompt_text,
         "parameters": {
             "width": 1024,
-            "height": 1024  # स्थिर वर्गाकार रेशियो (सर्वश्रेष्ठ चेहरे के लिए)
+            "height": 1024  # ✅ Square - Face Distortion से बचाता है
         }
     }
     
     try:
         response = session.post(api_url, headers=headers, json=payload, timeout=120)
         
-        # यदि मॉडल लोड हो रहा है, तो प्रतीक्षा करें
         if response.status_code == 503:
             estimated_time = response.json().get("estimated_time", 20)
             print(f"⏳ मॉडल लोड हो रहा है, {estimated_time:.1f} सेकंड प्रतीक्षा कर रहा हूँ...")
@@ -157,6 +174,7 @@ def generate_ai_image_hf(prompt_text, model_id="black-forest-labs/FLUX.1-schnell
             with open(filename, 'wb') as f:
                 f.write(response.content)
             print("✅ Hugging Face से हाई-क्वालिटी फोटो डाउनलोड हो गई!")
+            enhance_face_quality(filename)
             return filename
         else:
             print(f"❌ HF Model Error: {response.status_code}")
@@ -167,46 +185,72 @@ def generate_ai_image_hf(prompt_text, model_id="black-forest-labs/FLUX.1-schnell
 
 def generate_ai_image(prompt_text, filename="generated_photo.jpg"):
     """
-    मल्टी-मॉडल एआई जनरेशन सिस्टम (पहले HF, फिर Fallback)
+    Face-Focused AI Image Generation
     """
+    print("🎨 AI से Face-Focused फोटो बना रहा हूँ...")
+    
     # 1. पहला प्रयास: Flux.1-schnell (Hugging Face)
     image_path = generate_ai_image_hf(prompt_text, "black-forest-labs/FLUX.1-schnell", filename)
     if image_path:
-        enhance_image_quality(image_path)
         return image_path
         
-    # 2. दूसरा प्रयास (Fallback 1): RealVisXL V4.0 (वास्तविक चेहरों के लिए)
-    image_path = generate_ai_image_hf(prompt_text, "SG161222/RealVisXL_V4.0", filename)
-    if image_path:
-        enhance_image_quality(image_path)
-        return image_path
-
-    # 3. तीसरा प्रयास (Fallback 2): पोलिनेशंस बैकअप (सुरक्षित 1024x1024 रेशियो)
-    print("🔄 बैकअप पोलिनेशंस सर्वर पर स्विच कर रहा हूँ...")
+    # 2. दूसरा प्रयास: Pollinations (Square Resolution)
+    print("🔄 Pollinations बैकअप पर स्विच कर रहा हूँ...")
     clean_prompt = prompt_text.strip().replace('\n', ' ').replace('  ', ' ')
     encoded_prompt = urllib.parse.quote(clean_prompt[:250])
     
     flux_url = (
         f"https://image.pollinations.ai/prompt/{encoded_prompt}"
-        f"?width=1024&height=1024"  # वर्गाकार आकार चेहरे को विकृत होने से पूरी तरह बचाता है
+        f"?width=1024&height=1024"  # ✅ Square = No Face Distortion
         f"&model=flux"
         f"&nologo=true"
         f"&seed={random.randint(1, 9999999)}"
         f"&quality=high"
-        f"&enhance=false"
+        f"&enhance=true"
     )
     
     try:
-        response = session.get(flux_url, timeout=120)
+        response = session.get(flux_url, timeout=180)
         if response.status_code == 200 and len(response.content) > 50000:
             with open(filename, 'wb') as f:
                 f.write(response.content)
-            print("✅ पोलिनेशंस बैकअप से स्थिर फोटो डाउनलोड हो गई!")
-            enhance_image_quality(filename)
+            print("✅ Pollinations से Face-Focused फोटो डाउनलोड हो गई!")
+            enhance_face_quality(filename)
             return filename
     except Exception as e:
-        print(f"❌ बैकअप सर्वर भी विफल रहा: {e}")
-        
+        print(f"❌ Pollinations Error: {e}")
+    
+    # 3. तीसरा प्रयास: Simple Fallback
+    return generate_ai_image_face_fallback(filename)
+
+def generate_ai_image_face_fallback(filename="generated_photo.jpg"):
+    """
+    Face-Focused Fallback - अगर AI Fail हो तो
+    """
+    print("🔄 Face-Focused Fallback...")
+    
+    face_prompts = [
+        "Beautiful Indian woman portrait, close-up face, symmetrical features, high quality",
+        "Stunning Indian bride close-up, detailed eyes, natural skin, professional photography",
+        "Glamorous Bollywood actress portrait, sharp focus on face, studio lighting"
+    ]
+    
+    simple_prompt = random.choice(face_prompts)
+    encoded = urllib.parse.quote(simple_prompt)
+    
+    url = f"https://image.pollinations.ai/prompt/{encoded}?width=1024&height=1024&model=flux&nologo=true&quality=high&enhance=true"
+    
+    try:
+        response = session.get(url, timeout=180)
+        if response.status_code == 200 and len(response.content) > 50000:
+            with open(filename, 'wb') as f:
+                f.write(response.content)
+            print(f"✅ Face-Fallback Success!")
+            enhance_face_quality(filename)
+            return filename
+    except:
+        pass
+    
     return create_placeholder_image(filename)
 
 def create_placeholder_image(filename="placeholder.jpg"):
@@ -221,12 +265,12 @@ def create_placeholder_image(filename="placeholder.jpg"):
         return filename
 
 # ============================================
-# 🖼️ IMAGE ENHANCE
+# 👤 FACE ENHANCEMENT
 # ============================================
 
-def enhance_image_quality(image_path):
+def enhance_face_quality(image_path):
     """
-    Image Quality Enhance
+    Face-Focused Image Enhancement - Face को Sharp और Natural रखें
     """
     try:
         from PIL import Image, ImageEnhance
@@ -235,28 +279,40 @@ def enhance_image_quality(image_path):
         width, height = img.size
         print(f"📐 Current Resolution: {width}x{height}")
         
-        if width < 1024 or height < 1024:
-            new_width = 1024
-            new_height = 1024
-            print(f"📐 Resizing: {width}x{height} → {new_width}x{new_height}")
-            img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        # 1. Square Resolution Maintain करें (Face Distortion से बचने के लिए)
+        if width != height:
+            new_size = min(width, height)
+            print(f"📐 Cropping to Square: {new_size}x{new_size}")
+            left = (width - new_size) // 2
+            top = (height - new_size) // 2
+            img = img.crop((left, top, left + new_size, top + new_size))
         
-        # शार्पनेस को पूरी तरह से प्राकृतिक रखा गया है ताकि चेहरे के पिक्सल्स न बिगड़ें
+        # 2. Resolution बढ़ाएँ (Face Details के लिए)
+        if width < 1024:
+            new_size = 1024
+            print(f"📐 Upscaling to {new_size}x{new_size}")
+            img = img.resize((new_size, new_size), Image.Resampling.LANCZOS)
+        
+        # 3. ✅ Face के लिए हल्की Sharpness (Natural Look)
         enhancer = ImageEnhance.Sharpness(img)
-        img = enhancer.enhance(1.02)  
+        img = enhancer.enhance(1.05)  # 5% - Natural
         
-        # कॉन्ट्रास्ट को भी बहुत हल्का रखा गया है
+        # 4. ✅ हल्का Contrast
         enhancer = ImageEnhance.Contrast(img)
-        img = enhancer.enhance(1.02)  
+        img = enhancer.enhance(1.02)  # 2% - Natural
         
-        # High Quality Save
-        img.save(image_path, quality=95, optimize=True, format='JPEG')
+        # 5. ✅ हल्की Color Enhancement
+        enhancer = ImageEnhance.Color(img)
+        img = enhancer.enhance(1.02)  # 2% - Natural
+        
+        # 6. High Quality Save
+        img.save(image_path, quality=98, optimize=True, format='JPEG')
         new_size = os.path.getsize(image_path)
-        print(f"✅ Enhanced! New Size: {new_size/1024:.1f} KB")
+        print(f"✅ Face Enhanced! Size: {new_size/1024:.1f} KB")
         return True
         
     except Exception as e:
-        print(f"⚠️ Enhancement Error: {e}")
+        print(f"⚠️ Face Enhancement Error: {e}")
         return False
 
 # ============================================
@@ -344,7 +400,7 @@ def post_to_facebook(image_path, caption):
     
     try:
         with open(image_path, 'rb') as img_file:
-            files = {'source': img_file}  # ✅ सिंटैक्स एरर को पूरी तरह ठीक किया गया
+            files = {'source': img_file}
             response = session.post(fb_url, data=payload, files=files, timeout=120)
         
         if response.status_code == 200:
@@ -376,7 +432,7 @@ def cleanup_files(*files):
 
 def main():
     print("\n" + "="*60)
-    print("🚀 INSTAGRAM STYLE AI BOT START (BYPASS & NETWORK FIXED)")
+    print("🚀 FACE-FOCUSED AI BOT START")
     print("="*60)
     
     start_time = time.time()
@@ -385,8 +441,8 @@ def main():
         # STEP 1: Style Select
         style_prompt = learn_style_from_instagram()
         
-        # STEP 2: AI से फोटो बनाएं
-        image_path = generate_ai_image(style_prompt, "instagram_style_photo.jpg")
+        # STEP 2: AI से Face-Focused फोटो बनाएं
+        image_path = generate_ai_image(style_prompt, "face_focused_photo.jpg")
         
         if not image_path:
             print("❌ फोटो नहीं बन पाई!")
