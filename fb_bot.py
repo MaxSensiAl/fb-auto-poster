@@ -1,45 +1,40 @@
-import requests
-import random
 import os
 import sys
-import time
-import urllib.parse
+import random
+import requests
 from datetime import datetime
+import google.generativeai as genai
 
 # ============================================
-# ENVIRONMENT VARIABLES
+# ENVIRONMENT VARIABLES (GitHub Secrets से)
 # ============================================
 PAGE_ID = os.environ.get("FB_PAGE_ID")
 ACCESS_TOKEN = os.environ.get("FB_ACCESS_TOKEN")
-HF_TOKEN = os.environ.get("HF_TOKEN")
+GEMINI_API = os.environ.get("GEMINI_API")
+
+# Google API कॉन्फ़िगर करें
+if GEMINI_API:
+    genai.configure(api_key=GEMINI_API)
+else:
+    print("❌ ERROR: GEMINI_API Key is missing in environment variables!")
+    sys.exit(1)
 
 # ============================================
-# HIGH QUALITY FLUX PROMPTS
+# ULTRA-REALISTIC IMAGEN 3 PROMPTS (No Distortion)
 # ============================================
 PERFECT_FACE_PROMPTS = [
-    """Full-length portrait photograph of a beautiful Indian bride standing gracefully. She is wearing a traditional red designer lehenga with intricate gold embroidery. The shot shows her entire outfit from head to toe. Symmetrical gold wedding jewelry, a delicate maang tikka, matching earrings, and a small nose ring. Soft, glowing golden hour light illuminates the scene, showcasing natural skin texture with subtle film grain. The background is a soft-focus elegant palace corridor. Shot on 35mm film, Kodak Portra 400, authentic analog photography style.""",
+    """A full-length photography of a beautiful Indian bride standing elegantly in a royal palace corridor. She is wearing a traditional red designer lehenga with highly detailed gold embroidery. Complete outfit visible from head to toe. She wears perfectly matched symmetrical gold wedding jewelry, a delicate maang tikka, and matching earrings. Soft glowing natural lighting, detailed skin texture, captured on a professional DSLR camera, highly realistic, flawless face, cinematic.""",
     
-    """Medium-full shot of a South Indian young woman wearing a rich green Kanjeevaram silk saree with a golden border. The photo shows her from the knees up, displaying the full drape of the saree. She is wearing traditional gold temple jewelry with perfectly identical earrings and has jasmine flowers in her hair. The background is a softly blurred traditional Kerala temple courtyard. Soft morning sunlight casting natural shadows, realistic skin pores, candid photo style.""",
+    """A medium-full shot of a beautiful South Indian young woman wearing a rich green Kanjeevaram silk saree with a golden border. Showing her from the knees up, displaying the elegant drape of the saree. Symmetrical gold temple jewelry, jasmine flowers in her hair. Traditional temple background with soft morning sunlight, realistic skin pores, natural look, perfect face.""",
     
-    """Full-length fashion photograph of a modern Indian woman wearing an elegant pastel yellow crop top and a flowy designer ethnic skirt. She is standing outdoors with a blurred urban city background during sunset. The golden hour light reflects naturally on her skin. Her hands are resting on her waist, showcasing realistic fingers. The fabric of her skirt flows naturally with realistic drape and folds. Shot on a professional 50mm camera, high fidelity photo, no plastic look.""",
+    """A full-length fashion photograph of a modern Indian influencer girl wearing an elegant pastel yellow crop top and a flowy designer ethnic skirt. Standing outdoors with a blurred urban city background during sunset, warm natural lighting on her skin, realistic hands, perfect body proportions, shot on 35mm film, authentic photo style.""",
     
-    """Full-body candid portrait of a beautiful Rajasthani woman in a vibrant, colorful bandhani outfit with intricate silver jewelry. She is standing in front of a majestic ancient haveli during the warm afternoon. The shot captures her entire dress, displaying natural folds in the fabric. The lighting highlights her sharp, symmetric facial features. Symmetrical identical earrings, authentic skin texture with natural pores, analog film look.""",
+    """A full-body candid portrait of a beautiful Rajasthani woman in a vibrant, colorful bandhani outfit with intricate silver jewelry. Standing in a majestic ancient haveli courtyard during the warm afternoon. The camera captures her complete dress, realistic fabric folds, symmetrical identical earrings, flawless facial features, natural daylight.""",
     
-    """Full-length scenic portrait of a young Kashmiri woman wearing a traditional dark pheran with detailed colorful Kashmiri embroidery. She is standing in a snow-covered Gulmarg landscape, with the majestic mountains blurred in the background. Her face is clear with rosy cheeks and natural skin texture. Symmetrical silver earrings, natural clothing folds with accurate physics. Shot on a professional DSLR, authentic photo style.""",
+    """A full-length portrait of a beautiful young Kashmiri woman wearing a traditional dark pheran with detailed colorful embroidery. Standing in a snow-covered Gulmarg landscape with blurred mountains in the background. Highly detailed face, rosy cheeks, realistic eyes, natural clothing folds, high fidelity photography.""",
     
-    """Medium-full shot of a young Punjabi woman wearing a bright yellow Patiala salwar suit with a colorful phulkari dupatta. She is standing happily in a lush green mustard field under a clear blue sky. The camera captures her from the knees up, showing the full traditional suit. Natural bright sunlight, realistic eyes, natural skin texture, perfectly matched earrings, realistic fabric movement.""",
-    
-    """Full-length traditional portrait of a Bengali woman in a classic white saree with a thick red border (laal paar saree). She is wearing traditional gold bangles, perfectly matched symmetrical gold earrings, and is standing gracefully in front of a beautifully decorated Durga Puja pandal. Saree fabric drapes naturally to the ground, soft realistic lighting, analog photo quality.""",
-    
-    """Full-body fashion portrait of an Indian wedding guest in a pastel-colored designer anarkali suit. She is standing in a softly lit wedding venue with warm decorative lights in the background. The photo shows her entire outfit with elegant, natural folds. Sharp focus on her natural face, symmetrical delicate jewelry, authentic skin pores, shot on film style."""
+    """A traditional full-length portrait of a Bengali woman in a classic white saree with a thick red border (laal paar saree). Wearing traditional identical gold bangles and earrings, standing gracefully in front of a decorated Durga Puja pandal. Saree fabric drapes naturally to the ground, soft realistic lighting, authentic photo."""
 ]
-
-# ============================================
-# REAL PHOTO & DETAIL ENHANCER
-# ============================================
-PHOTO_ENHANCE = """
-, perfect facial symmetry, highly detailed eyes, natural skin texture with visible pores, subtle film grain, perfectly matched symmetrical identical earrings, natural soft fabric draping, realistic clothing folds with accurate physics, shot on 35mm film, analog photography, authentic photo, no CGI, no 3D render, no plastic look
-"""
 
 # ============================================
 # SMART CAPTION GENERATOR
@@ -60,8 +55,8 @@ def generate_trending_caption():
         
 💃 Trending AI Girl - Inspired by today's top fashionistas!
 
-🎯 Question: 1-10 में रेट करो ये लुक कितना ट्रेंडी है?
-👇 कमेंट में बताओ - सबसे अच्छी चीज़ क्या लगी?
+🎯 Question: 1-10 में rate karo ye look kitna trendy hai?
+👇 Comment me batao - sabse acchi cheez kya lagi?
 
 #TrendingGirl #AIFashionista #ViralFashion #IndianBeauty #TrendingStyle #FYP #ExplorePage #ViralReels #AIFashion #StyleInspo""",
 
@@ -69,60 +64,40 @@ def generate_trending_caption():
         
 ✨ AI Generated - Trending Fashion Girl
 
-💫 क्या आप ये आउटफिट पहनेंगी? हाँ/ना में बताओ!
-💬 अपनी राय दें!
+💫 Kya aap ye outfit pehnengi? Haan/Na me batao!
+💬 Apni rai niche comment me dein!
 
 #AIGirl #FashionTrends #IndianFashion #ViralPost #OOTD #StyleGoals #AICreation #Explore #TrendingNow"""
     ]
     return random.choice(captions)
 
 # ============================================
-# 🎨 GENERATE IMAGE WITH AUTO-BYPASS
+# 🎨 GENERATE IMAGE FROM GOOGLE IMAGEN 3
 # ============================================
-def generate_flux_image_with_bypass(prompt_text, filename="temp_output.jpg"):
-    """पहले Hugging Face का प्रयास करें, फेल होने पर Pollinations.ai FLUX बाईपास पर जाएं"""
-    
-    # 1. पहला प्रयास: Hugging Face API
-    print("🎨 Attempting Primary Engine: Hugging Face (FLUX.1-schnell)...")
-    API_URL = "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell"
-    headers = {"Authorization": f"Bearer {HF_TOKEN}"}
-    payload = {
-        "inputs": prompt_text,
-        "parameters": {"width": 1080, "height": 1350}
-    }
+def generate_imagen_3_image(prompt_text, filename="temp_output.jpg"):
+    """Google Imagen 3 से विकृति-रहित एचडी इमेज बनाएं"""
+    print("🎨 Generating Ultra-Realistic Image via Google Imagen 3...")
     
     try:
-        response = requests.post(API_URL, headers=headers, json=payload, timeout=30)
-        if response.status_code == 200:
-            with open(filename, 'wb') as f:
-                f.write(response.content)
-            print("✅ Successfully generated via Hugging Face!")
-            return filename
-    except Exception as e:
-        print(f"⚠️ Hugging Face Connection Failed: {e}")
+        # Google Imagen 3 मॉडल लोड करें
+        model = genai.ImageGenerationModel("imagen-3.0-generate-002")
         
-    # 2. बैकअप बाईपास: Pollinations FLUX Engine (यह कभी ब्लॉक नहीं होता)
-    print("🚀 Primary Engine blocked/failed. Activating Bypass Engine: Pollinations.ai (FLUX)...")
-    encoded_prompt = urllib.parse.quote(prompt_text.strip())
-    bypass_url = (
-        f"https://image.pollinations.ai/prompt/{encoded_prompt}"
-        f"?width=1080&height=1350"
-        f"&model=flux"
-        f"&nologo=true"
-        f"&seed={random.randint(1, 9999999)}"
-    )
-    
-    try:
-        response = requests.get(bypass_url, timeout=60)
-        if response.status_code == 200:
-            with open(filename, 'wb') as f:
-                f.write(response.content)
-            print("✅ Successfully generated via Pollinations FLUX Bypass!")
+        # इमेज जनरेट करें
+        result = model.generate_images(
+            prompt=prompt_text,
+            number_of_images=1,
+            aspect_ratio="3:4",  # फेसबुक/इंस्टाग्राम के लिए बेस्ट पोर्ट्रेट आकार
+            output_mime_type="image/jpeg"
+        )
+        
+        # इमेज सेव करें
+        for image in result.generated_images:
+            image.image.save(filename)
+            print("✅ Successfully generated via Google Imagen 3!")
             return filename
-        else:
-            print(f"❌ Bypass Engine also failed with status: {response.status_code}")
+            
     except Exception as e:
-        print(f"❌ Bypass Engine connection error: {e}")
+        print(f"❌ Google Imagen 3 Failed: {e}")
         
     return None
 
@@ -160,17 +135,16 @@ def post_local_file_to_facebook(image_path, caption):
 # ============================================
 def trending_girl_bot():
     if not PAGE_ID or not ACCESS_TOKEN:
-        print("❌ ERROR: Facebook credentials (PAGE_ID / ACCESS_TOKEN) are missing!")
+        print("❌ ERROR: Facebook credentials (PAGE_ID, ACCESS_TOKEN) are missing!")
         return False
         
-    base_prompt = random.choice(PERFECT_FACE_PROMPTS)
-    final_prompt = base_prompt + PHOTO_ENHANCE
+    final_prompt = random.choice(PERFECT_FACE_PROMPTS)
     
-    # बाईपास इंजन के साथ इमेज बनाएं
-    local_image = generate_flux_image_with_bypass(final_prompt)
+    # Google Imagen 3 से इमेज बनाएं
+    local_image = generate_imagen_3_image(final_prompt)
     
     if not local_image:
-        print("❌ Image generation failed on both Engines!")
+        print("❌ Image generation failed!")
         return False
         
     caption = generate_trending_caption()
@@ -180,7 +154,7 @@ def trending_girl_bot():
         os.remove(local_image)
         
     if post_id:
-        print("🎉 Workflow successfully completed!")
+        print("🎉 Workflow successfully completed using Google Imagen 3!")
         return True
     return False
 
