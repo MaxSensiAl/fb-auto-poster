@@ -1,224 +1,194 @@
+import requests
+import random
 import os
 import sys
 import time
-import random
-import requests
 import urllib.parse
 from datetime import datetime
-from playwright.sync_api import sync_playwright
+
+# Try importing Gemini (optional)
+try:
+    import google.generativeai as genai
+    GEMINI_AVAILABLE = True
+except ImportError:
+    GEMINI_AVAILABLE = False
+    print("⚠️ Google Generative AI not installed. Run: pip install google-generativeai")
 
 # ============================================
-# 🔐 GITHUB SECRETS से VARIABLES लें
+# ENVIRONMENT VARIABLES
 # ============================================
-IG_USERNAME = os.environ.get("IG_USERNAME")
-IG_PASSWORD = os.environ.get("IG_PASSWORD")
-TARGET_PROFILE = os.environ.get("TARGET_PROFILE", "zaraso_phia")
-FB_PAGE_ID = os.environ.get("FB_PAGE_ID")
-FB_ACCESS_TOKEN = os.environ.get("FB_ACCESS_TOKEN")
-GEMINI_API = os.environ.get("GEMINI_API")
+PAGE_ID = os.environ.get("FB_PAGE_ID")
+ACCESS_TOKEN = os.environ.get("FB_ACCESS_TOKEN")
+GEMINI_API_KEY = os.environ.get("GEMINI_API")
 HF_TOKEN = os.environ.get("HF_TOKEN")
 
-# Check Credentials
-if not IG_USERNAME or not IG_PASSWORD:
-    print("❌ Instagram Credentials नहीं मिले!")
-    print("कृपया GitHub Secrets में IG_USERNAME और IG_PASSWORD सेट करें")
+# Check Facebook credentials
+if not PAGE_ID or not ACCESS_TOKEN:
+    print("❌ ERROR: Facebook credentials missing!")
     sys.exit(1)
 
-if not FB_PAGE_ID or not FB_ACCESS_TOKEN:
-    print("❌ Facebook Credentials नहीं मिले!")
-    sys.exit(1)
-
-print(f"✅ Instagram: {IG_USERNAME[:3]}***")
-print(f"✅ Target: @{TARGET_PROFILE}")
-print(f"✅ Facebook Page: {FB_PAGE_ID[:3]}***")
+# Configure Gemini if available
+if GEMINI_AVAILABLE and GEMINI_API_KEY:
+    try:
+        genai.configure(api_key=GEMINI_API_KEY)
+        print("✅ Gemini AI configured successfully!")
+    except Exception as e:
+        print(f"⚠️ Gemini configuration failed: {e}")
 
 # ============================================
-# 📸 1. INSTAGRAM से STYLE सीखें
+# 🎯 FIXED: PROMPTS WITH FACE CONSISTENCY
 # ============================================
-
-def learn_style_from_instagram():
-    """
-    Instagram प्रोफाइल से पोस्ट लोड करें और स्टाइल एनालिसिस करें
-    """
-    print(f"📸 Instagram से स्टाइल सीख रहा हूँ: @{TARGET_PROFILE}")
+PERFECT_FACE_PROMPTS = [
+    # ⭐ This prompt ensures SAME FACE, SAME CHARACTER
+    """A ultra-high-resolution, crystal-clear portrait of a young South Asian woman with a specific, consistent face. 
+    She has almond-shaped brown eyes, a small nose, heart-shaped face, and warm wheatish complexion. 
+    She is wearing a traditional pink and maroon headscarf and shawl with gold embroidery.
+    SAME FACE, SAME PERSON in EVERY generation. 
+    Background shows sharp, clear snow-capped mountains and wooden fence under natural sunlight.
+    High-definition, 8k resolution, hyper-realistic, professional photography, 
+    National Geographic quality, sharp focus, cinematic lighting, rich textures.""",
     
-    style_description = {
-        "subjects": [],
-        "colors": [],
-        "backgrounds": [],
-        "poses": [],
-        "moods": []
-    }
-    
-    with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=True,  # GitHub Actions में Headless चलेगा
-            args=[
-                '--disable-blink-features=AutomationControlled',
-                '--no-sandbox',
-                '--disable-dev-shm-usage'
-            ]
-        )
-        
-        context = browser.new_context(
-            viewport={'width': 1280, 'height': 720},
-            user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        )
-        
-        page = context.new_page()
-        
-        try:
-            # 1. Instagram होम पेज
-            page.goto('https://www.instagram.com/')
-            page.wait_for_timeout(5000)
-            
-            # 2. लॉगिन
-            page.fill('input[name="username"]', IG_USERNAME)
-            page.fill('input[name="password"]', IG_PASSWORD)
-            page.click('button[type="submit"]')
-            page.wait_for_timeout(8000)
-            
-            # 3. "Not Now" बटन
-            try:
-                page.click('button:has-text("Not Now")')
-                page.wait_for_timeout(3000)
-            except:
-                pass
-            
-            # 4. Target Profile पर जाएँ
-            page.goto(f'https://www.instagram.com/{TARGET_PROFILE}/')
-            page.wait_for_timeout(5000)
-            
-            # 5. पोस्ट लोड करें
-            for i in range(3):
-                page.evaluate('window.scrollBy(0, 800)')
-                page.wait_for_timeout(2000)
-            
-            # 6. पोस्ट लिंक निकालें
-            post_links = page.eval_on_selector_all(
-                'a[href*="/p/"]',
-                'els => els.map(el => el.href)'
-            )
-            
-            unique_links = list(dict.fromkeys(post_links))
-            print(f"✅ {len(unique_links)} पोस्ट मिले")
-            
-            # 7. पहली 3 पोस्ट का एनालिसिस करें
-            for idx, link in enumerate(unique_links[:3]):
-                try:
-                    print(f"  🔍 पोस्ट {idx+1} एनालिसिस...")
-                    page.goto(link)
-                    page.wait_for_timeout(4000)
-                    
-                    # फोटो डाउनलोड करें
-                    img_src = page.eval_on_selector(
-                        'img[style*="object-fit"]',
-                        'el => el.src'
-                    )
-                    
-                    if img_src:
-                        # फोटो सेव करें (रिफरेंस के लिए)
-                        img_response = requests.get(img_src)
-                        img_path = f"ref_post_{idx+1}.jpg"
-                        with open(img_path, 'wb') as f:
-                            f.write(img_response.content)
-                        print(f"    📷 फोटो सेव: {img_path}")
-                        
-                        # Caption निकालें
-                        try:
-                            caption = page.eval_on_selector(
-                                'div._a9zr h1',
-                                'el => el.textContent'
-                            )
-                            if caption:
-                                print(f"    📝 कैप्शन: {caption[:100]}...")
-                        except:
-                            pass
-                        
-                except Exception as e:
-                    print(f"    ❌ पोस्ट {idx+1} स्किप: {e}")
-            
-            browser.close()
-            
-        except Exception as e:
-            print(f"❌ Instagram Error: {e}")
-            browser.close()
-            return None
-    
-    # Style Summary बनाएँ
-    return create_default_prompt()
+    # Backup with specific features
+    """A stunning medium-close up portrait of a beautiful Indian bride. 
+    SAME FACE: specific woman with round face, big expressive dark eyes, full lips, straight nose, 
+    wearing traditional red bridal wear with highly detailed gold embroidery.
+    SAME PERSON, IDENTICAL FEATURES every time.
+    Wearing delicate gold maang tikka and matching earrings. 
+    Soft glowing studio light, realistic skin texture, shot on 85mm lens, f/1.4, 8k, photorealistic""",
+]
 
 # ============================================
-# 📝 STYLE PROMPT
+# 🖼️ IMAGE GENERATION - FIXED FOR QUALITY
 # ============================================
 
-def create_default_prompt():
-    """
-    हाई-क्वालिटी प्रॉम्प्ट
-    """
-    return """
-    A stunning high-quality portrait of an Indian bride.
-    Traditional red bridal wear with gold embroidery.
-    Beautiful jewelry, maang tikka, and earrings.
-    Soft golden hour lighting, dreamy background.
-    8k resolution, photorealistic, professional.
-    Canon EOS R5, 85mm lens, f/1.4.
-    National Geographic quality, sharp focus.
-    Same face, same character.
-    """
-
-# ============================================
-# 🎨 2. AI से PHOTO GENERATE करें
-# ============================================
-
-def generate_ai_image(prompt_text, filename="generated_photo.jpg"):
-    """
-    FLUX AI से हाई-क्वालिटी फोटो जनरेट करें
-    """
-    print("🎨 AI से नई फोटो बना रहा हूँ...")
+def generate_flux_image_high_quality(prompt_text, filename="temp_flux.jpg"):
+    """Generate HIGH QUALITY FLUX image - FIXED"""
+    print("🎨 Generating FLUX image (High Quality)...")
     
-    enhanced_prompt = f"{prompt_text}, ultra-high-resolution, 8k, photorealistic, crystal clear, professional photography, national geographic quality"
-    encoded_prompt = urllib.parse.quote(enhanced_prompt.strip())
+    # Enhanced prompt for better quality and consistency
+    quality_prompt = f"{prompt_text} ultra-high-resolution, 8k, photorealistic, crystal clear, professional photography, National Geographic quality, hyper-detailed, sharp focus, same face, same character"
     
+    encoded_prompt = urllib.parse.quote(quality_prompt.strip())
+    
+    # Better parameters for higher quality
     flux_url = (
         f"https://image.pollinations.ai/prompt/{encoded_prompt}"
-        f"?width=1024&height=1280"
+        f"?width=1024&height=1280"  # Balanced size
         f"&model=flux-pro"
         f"&nologo=true"
-        f"&seed={random.randint(1, 9999999)}"
+        f"&seed={random.randint(1, 9999999)}"  # Random seed for variety
         f"&quality=high"
         f"&enhance=true"
     )
     
     try:
-        print("⏳ 30-60 सेकंड लग सकते हैं...")
+        print(f"⏳ Generating image... (may take 30-60 seconds)")
         response = requests.get(flux_url, timeout=180)
         
+        if response.status_code == 200:
+            content_size = len(response.content)
+            if content_size < 50000:  # Too small = bad quality
+                print(f"⚠️ Image too small ({content_size} bytes), retrying...")
+                return None
+            
+            with open(filename, 'wb') as f:
+                f.write(response.content)
+            print(f"✅ FLUX Success! Size: {content_size/1024:.1f} KB")
+            return filename
+        else:
+            print(f"❌ FLUX failed: {response.status_code}")
+    except Exception as e:
+        print(f"❌ FLUX error: {e}")
+    return None
+
+def generate_hf_image_high_quality(prompt_text, filename="temp_hf.jpg"):
+    """Generate via Hugging Face SDXL"""
+    if not HF_TOKEN:
+        print("⚠️ HF_TOKEN not found, skipping...")
+        return None
+    
+    print("🎨 Generating via Hugging Face SDXL...")
+    
+    API_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0"
+    headers = {"Authorization": f"Bearer {HF_TOKEN}"}
+    
+    # Enhanced prompt for consistency
+    enhanced_prompt = f"{prompt_text}, same face, same character, high quality, 8k, photorealistic"
+    
+    payload = {
+        "inputs": enhanced_prompt,
+        "parameters": {
+            "negative_prompt": "ugly, deformed, blurry, low quality, bad anatomy, distorted face, different face, changed features",
+            "num_inference_steps": 50,
+            "guidance_scale": 7.5,
+            "width": 1024,
+            "height": 1280,
+        }
+    }
+    
+    try:
+        response = requests.post(API_URL, headers=headers, json=payload, timeout=120)
         if response.status_code == 200:
             content_size = len(response.content)
             if content_size > 50000:
                 with open(filename, 'wb') as f:
                     f.write(response.content)
-                print(f"✅ फोटो बन गई! ({content_size/1024:.1f} KB)")
+                print(f"✅ HF Success! Size: {content_size/1024:.1f} KB")
                 return filename
-            else:
-                print(f"⚠️ फोटो बहुत छोटी है ({content_size} bytes)")
         else:
-            print(f"❌ AI Error: {response.status_code}")
-            
+            print(f"❌ HF failed: {response.status_code}")
     except Exception as e:
-        print(f"❌ AI Error: {e}")
+        print(f"❌ HF error: {e}")
+    return None
+
+def generate_ultimate_image_high_quality(prompt):
+    """Try multiple methods for best quality"""
+    print("🖼️ Starting HIGH-QUALITY image generation...")
     
+    # First try FLUX
+    result = generate_flux_image_high_quality(prompt)
+    if result and os.path.exists(result) and os.path.getsize(result) > 50000:
+        return result
+    
+    # Then try HF if available
+    if HF_TOKEN:
+        result = generate_hf_image_high_quality(prompt)
+        if result and os.path.exists(result) and os.path.getsize(result) > 50000:
+            return result
+    
+    # Fallback: Try FLUX with different settings
+    print("🔄 Trying FLUX with different settings...")
+    return generate_flux_retry(prompt)
+
+def generate_flux_retry(prompt, filename="temp_flux2.jpg"):
+    """Retry FLUX with different parameters"""
+    try:
+        encoded_prompt = urllib.parse.quote(f"{prompt}, high quality, 8k")
+        flux_url = (
+            f"https://image.pollinations.ai/prompt/{encoded_prompt}"
+            f"?width=1024&height=1024"
+            f"&model=flux"
+            f"&nologo=true"
+            f"&seed={random.randint(1, 9999999)}"
+        )
+        
+        response = requests.get(flux_url, timeout=180)
+        if response.status_code == 200:
+            content_size = len(response.content)
+            with open(filename, 'wb') as f:
+                f.write(response.content)
+            print(f"✅ FLUX Retry Success! Size: {content_size/1024:.1f} KB")
+            return filename
+    except Exception as e:
+        print(f"❌ FLUX retry error: {e}")
     return None
 
 # ============================================
-# 📝 3. CAPTION GENERATE करें
+# 📝 FIXED: STATIC CAPTION GENERATOR
 # ============================================
 
-def generate_caption():
-    """
-    Viral Instagram-style Caption
-    """
+def generate_static_caption():
+    """Static captions - Always works"""
     hour = datetime.now().hour
     if 6 <= hour < 12:
         time_text = "🌅 Good Morning! Today's trending beauty"
@@ -232,54 +202,89 @@ def generate_caption():
     captions = [
         f"""{time_text}
 
-✨ AI Generated Perfect Look!
-
-आपको कैसा लगा? 🤔
-👇 Comment में बताओ:
-❤️ - पसंद आया
-💔 - नहीं पसंद
-
-🎯 100+ Reactions = Next Look और भी Better!
-
-#AIFashion #IndianBeauty #AIArt #ViralFashion #ExplorePage #FYP #StyleInspo #FashionGoals #AIModel #DigitalFashion #AIArtwork #ModernBride #IndianWear #FusionFashion #AIArtist #VirtualFashion #TechStyle #InstaFashion #DailyFashion #Fashionista #AICouture #VirtualInfluencer #IndianFashionBlogger #AIForFashion""",
-        
-        f"""{time_text}
-
-🔥 AI ने बनाया ये Stunning Look!
+🔥 AI Generated Perfect Indian Bride Look!
 
 क्या आपको लगता है ये Real है या AI? 🤔
 👇 3 Second mein comment karo:
-1️⃣ Rate करो (1-10)
-2️⃣ Sabse best kya hai?
+1️⃣ Kitne number doge? (1-10)
+2️⃣ Sabse best kya hai - Dress, Jewelry, ya Face?
 
 💡 50+ Comments = Next Post Aaj Raat hi!
 
-#AIBride #IndianWedding #AIArt #TrendingReels #ViralPost #FYP #ExplorePage #AIFashion #BridalWear #AICommunity #DigitalArt #AIInfluencer #AIModel #FashionAI #IndianFashion #BollywoodStyle #AIArtCommunity #ViralReels #InstagramReels #Explore #TrendingNow #AIContent #AIGirl #ArtificialIntelligence #TechFashion #FutureOfFashion #AIforIndia #IndianAI #DesiBride #ShaadiGoals"""
+#AIBride #IndianWedding #AIArt #TrendingReels #ViralPost #FYP #ExplorePage #AIFashion #BridalWear #AICommunity #DigitalArt #AIInfluencer #AIModel #FashionAI #IndianFashion #BollywoodStyle #AIArtCommunity #ViralReels #InstagramReels #Explore #TrendingNow #AIContent #AIGirl #ArtificialIntelligence #TechFashion #FutureOfFashion #AIforIndia #IndianAI #DesiBride #ShaadiGoals""",
+
+        f"""{time_text}
+
+💃 AI ने बनाया ये Stunning Look! 
+
+क्या आप ये outfit पहनेंगी? 👗
+👇 Comment mein batao:
+❤️ Haan - agar pasand aaya
+💔 Na - agar nahi pasand
+
+🎯 100+ Reactions = Next Look और भी Better!
+
+#AIFashion #TrendingStyle #IndianBeauty #AICreation #ViralFashion #ExplorePage #FYP #StyleInspo #OOTD #FashionGoals #AIModel #DigitalFashion #AIArtwork #ModernBride #IndianWear #FusionFashion #AIArtist #VirtualFashion #TechStyle #InstaFashion #DailyFashion #Fashionista #AICouture #VirtualInfluencer #IndianFashionBlogger #AIForFashion"""
     ]
-    
     return random.choice(captions)
 
 # ============================================
-# 📤 4. FACEBOOK पर POST करें
+# 📝 GEMINI CAPTION GENERATOR (FIXED)
 # ============================================
 
-def post_to_facebook(image_path, caption):
-    """
-    Facebook Page पर फोटो पोस्ट करें
-    """
-    print("📤 Facebook पर पोस्ट कर रहा हूँ...")
+def generate_gemini_caption_fixed(prompt_context):
+    """Fixed Gemini caption generator"""
+    if not GEMINI_AVAILABLE or not GEMINI_API_KEY:
+        print("⚠️ Gemini not available, using static caption...")
+        return generate_static_caption()  # ✅ Now works!
     
-    fb_url = f"https://graph.facebook.com/{FB_PAGE_ID}/photos"
+    try:
+        print("🤖 Generating Gemini caption...")
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        prompt = f"""Create a viral Instagram caption for an AI-generated high-quality Indian beauty portrait.
+
+Image context: {prompt_context[:200]}
+
+Requirements:
+1. Write in Hinglish (Hindi + English mix)
+2. Start with catchy emoji hook
+3. Include 2-3 interactive questions in Hindi
+4. Add 20-25 trending hashtags
+5. Keep under 2200 characters
+6. Make it engaging and desi vibe
+
+Caption:"""
+        
+        response = model.generate_content(prompt)
+        if response and response.text:
+            print("✅ Gemini caption generated!")
+            return response.text[:2200]
+        
+    except Exception as e:
+        print(f"⚠️ Gemini caption failed: {e}")
+    
+    return generate_static_caption()  # ✅ Fixed fallback
+
+# ============================================
+# 📤 FACEBOOK POSTING
+# ============================================
+
+def post_local_file_to_facebook(image_path, caption):
+    """Upload image to Facebook Page"""
+    print("📤 Uploading to Facebook...")
+    
+    fb_url = f"https://graph.facebook.com/{PAGE_ID}/photos"
     
     payload = {
         'caption': caption,
-        'access_token': FB_ACCESS_TOKEN,
+        'access_token': ACCESS_TOKEN,
         'published': 'true'
     }
     
     try:
         if not os.path.exists(image_path) or os.path.getsize(image_path) < 100:
-            print("❌ फोटो फ़ाइल इनवैलिड है!")
+            print("❌ Image file invalid!")
             return None
         
         with open(image_path, 'rb') as img_file:
@@ -288,85 +293,84 @@ def post_to_facebook(image_path, caption):
         
         if response.status_code == 200:
             post_id = response.json().get('id')
-            print(f"✅ पोस्ट हो गई! Post ID: {post_id}")
+            print(f"✅ POST SUCCESSFUL! Post ID: {post_id}")
             return post_id
         else:
-            print(f"❌ Facebook Error: {response.text[:500]}")
+            print(f"❌ Facebook Upload Failed: {response.text[:500]}")
             return None
             
     except Exception as e:
-        print(f"⚠️ Facebook Error: {e}")
+        print(f"⚠️ Error uploading to Facebook: {e}")
         return None
 
 # ============================================
-# 🧹 5. CLEANUP
+# 🧹 CLEANUP
 # ============================================
 
 def cleanup_files(*files):
-    """टेम्परेरी फ़ाइल्स डिलीट करें"""
+    """Delete temporary files"""
     for file in files:
         if file and os.path.exists(file):
             try:
                 os.remove(file)
-                print(f"🧹 {file} डिलीट हो गया")
+                print(f"🧹 Removed: {file}")
             except:
                 pass
 
 # ============================================
-# 🚀 6. MAIN BOT
+# 🎯 MAIN BOT - FIXED VERSION
 # ============================================
 
-def main():
-    """पूरा बॉट चलाएं"""
+def run_bot_high_quality():
+    """Complete workflow - FIXED version"""
     
     print("\n" + "="*60)
-    print("🚀 INSTAGRAM STYLE AI BOT START")
+    print("🚀 STARTING HIGH-QUALITY AI BOT")
     print("="*60)
     
     start_time = time.time()
     
     try:
-        # STEP 1: Instagram से स्टाइल सीखें
-        print("\n📸 STEP 1: Instagram स्टाइल सीख रहा हूँ...")
-        style_prompt = learn_style_from_instagram()
+        # Step 1: Select prompt
+        selected_prompt = PERFECT_FACE_PROMPTS[0]
+        print("📝 Using high-quality prompt with face consistency...")
         
-        if not style_prompt:
-            style_prompt = create_default_prompt()
+        # Step 2: Generate HIGH QUALITY image
+        print("\n🖼️ GENERATING IMAGE...")
+        image_path = generate_ultimate_image_high_quality(selected_prompt)
         
-        print(f"✅ प्रॉम्प्ट तैयार: {style_prompt[:100]}...")
-        
-        # STEP 2: AI से फोटो बनाएं
-        print("\n🎨 STEP 2: AI से फोटो बना रहा हूँ...")
-        image_path = generate_ai_image(style_prompt, "instagram_style_photo.jpg")
-        
-        if not image_path:
-            print("❌ फोटो नहीं बन पाई!")
+        if not image_path or not os.path.exists(image_path):
+            print("❌ CRITICAL: No image generated!")
             return False
         
-        # STEP 3: कैप्शन बनाएं
-        print("\n📝 STEP 3: कैप्शन बना रहा हूँ...")
-        caption = generate_caption()
-        print(f"✅ कैप्शन तैयार ({len(caption)} अक्षर)")
+        file_size = os.path.getsize(image_path)
+        print(f"✅ Image ready: {image_path} ({file_size/1024:.1f} KB)")
         
-        # STEP 4: Facebook पर पोस्ट करें
-        print("\n📤 STEP 4: Facebook पर पोस्ट कर रहा हूँ...")
-        post_id = post_to_facebook(image_path, caption)
+        # Step 3: Generate caption
+        print("\n📝 GENERATING CAPTION...")
+        caption = generate_gemini_caption_fixed(selected_prompt)
+        print(f"✅ Caption ready ({len(caption)} chars)")
         
-        # STEP 5: क्लीनअप
-        print("\n🧹 STEP 5: क्लीनअप...")
-        cleanup_files(image_path, "ref_post_1.jpg", "ref_post_2.jpg", "ref_post_3.jpg")
+        # Step 4: Post to Facebook
+        print("\n📤 POSTING TO FACEBOOK...")
+        post_id = post_local_file_to_facebook(image_path, caption)
+        
+        # Step 5: Cleanup
+        cleanup_files(image_path)
         
         elapsed = time.time() - start_time
         
         if post_id:
             print("\n" + "="*60)
-            print("🎉 SUCCESS! सब कुछ हो गया!")
-            print(f"⏱️ कुल समय: {elapsed:.2f} सेकंड")
+            print("🎉 HIGH-QUALITY POST SUCCESSFUL!")
+            print(f"⏱️ Time: {elapsed:.2f} seconds")
             print(f"📱 Post ID: {post_id}")
             print("="*60)
             return True
         else:
-            print("\n❌ पोस्ट नहीं हो पाई!")
+            print("\n" + "="*60)
+            print("❌ POST FAILED")
+            print("="*60)
             return False
             
     except Exception as e:
@@ -376,9 +380,9 @@ def main():
         return False
 
 # ============================================
-# 🎯 EXECUTE
+# 🚀 EXECUTION
 # ============================================
 
 if __name__ == "__main__":
-    success = main()
+    success = run_bot_high_quality()
     sys.exit(0 if success else 1)
