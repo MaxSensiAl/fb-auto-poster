@@ -17,15 +17,15 @@ urllib3_connection.HAS_IPV6 = False
 from playwright.sync_api import sync_playwright
 
 # ============================================
-# 🔐 GITHUB SECRETS से VARIABLES लें
+# 🔐 GITHUB SECRETS से VARIABLES लें और साफ करें (.strip())
 # ============================================
-IG_USERNAME = os.environ.get("IG_USERNAME")
-IG_PASSWORD = os.environ.get("IG_PASSWORD")
-TARGET_PROFILE = os.environ.get("TARGET_PROFILE", "zaraso_phia")
-FB_PAGE_ID = os.environ.get("FB_PAGE_ID")
-FB_ACCESS_TOKEN = os.environ.get("FB_ACCESS_TOKEN")
-GEMINI_API = os.environ.get("GEMINI_API")
-HF_TOKEN = os.environ.get("HF_TOKEN")
+IG_USERNAME = os.environ.get("IG_USERNAME", "").strip()
+IG_PASSWORD = os.environ.get("IG_PASSWORD", "").strip()
+TARGET_PROFILE = os.environ.get("TARGET_PROFILE", "zaraso_phia").strip()
+FB_PAGE_ID = os.environ.get("FB_PAGE_ID", "").strip()
+FB_ACCESS_TOKEN = os.environ.get("FB_ACCESS_TOKEN", "").strip()
+GEMINI_API = os.environ.get("GEMINI_API", "").strip()
+HF_TOKEN = os.environ.get("HF_TOKEN", "").strip()
 
 # Check Credentials
 if not IG_USERNAME or not IG_PASSWORD:
@@ -38,6 +38,7 @@ if not FB_PAGE_ID or not FB_ACCESS_TOKEN:
 
 print(f"✅ Instagram Target: @{TARGET_PROFILE}")
 print(f"✅ Instagram User: {IG_USERNAME[:3]}***")
+print(f"✅ Cleaned Facebook Page ID: {FB_PAGE_ID[:4]}***")
 
 # ============================================
 # 🌐 मजबूत नेटवर्क सेशन सेटअप
@@ -54,7 +55,7 @@ session.mount("https://", adapter)
 session.mount("http://", adapter)
 
 # ============================================
-# 🎨 MULTIPLE PROMPTS (बैकअप के लिए)
+# 🎨 MULTIPLE PROMPTS
 # ============================================
 
 PROMPTS = [
@@ -77,13 +78,15 @@ def create_default_prompt():
 
 def login_and_get_instagram_style(page):
     """
-    इंस्टाग्राम पर लॉगिन करके टारगेट प्रोफाइल का नवीनतम पोस्ट चेक करना और प्रॉम्प्ट बनाना
+    इंस्टाग्राम पर लॉगिन करके टारगेट प्रोफाइल का नवीनतम पोस्ट चेक करना
     """
-    print("\n🔐 [लॉगिन सिस्टम] इंस्टाग्राम वेब पर लॉगिन कर रहा हूँ...")
+    print("\n🔐 [लॉगिन सिस्टम] इंस्टाग्राम वेब पर जा रहा हूँ...")
     page.goto("https://www.instagram.com/accounts/login/")
-    page.wait_for_timeout(4000)
     
     try:
+        # इनपुट लोड होने की प्रतीक्षा करें
+        page.wait_for_selector('input[name="username"]', timeout=40000)
+        
         # क्रेडेंशियल्स भरें
         page.fill('input[name="username"]', IG_USERNAME)
         page.fill('input[name="password"]', IG_PASSWORD)
@@ -91,42 +94,38 @@ def login_and_get_instagram_style(page):
         
         # लॉगिन बटन दबाएं
         page.click('button[type="submit"]')
-        print("⏳ लॉगिन होने की प्रतीक्षा कर रहा हूँ (8 सेकंड)...")
-        page.wait_for_timeout(8000)
+        print("⏳ लॉगिन होने की प्रतीक्षा कर रहा हूँ (10 सेकंड)...")
+        page.wait_for_timeout(10000)
         
-        # 'Not Now' पॉपअप्स को संभालना (यदि दिखाई दें)
+        # पॉपअप्स को संभालना
         try:
             if page.locator("text=Not Now").is_visible():
                 page.click("text=Not Now")
                 page.wait_for_timeout(2000)
-            if page.locator("text=Not now").is_visible():
-                page.click("text=Not now")
-                page.wait_for_timeout(2000)
         except:
             pass
             
-        print("✅ इंस्टाग्राम लॉगिन सफल!")
+        print("✅ इंस्टाग्राम लॉगिन प्रक्रिया पूर्ण!")
         
         # टारगेट प्रोफाइल पर जाएं
         profile_url = f"https://www.instagram.com/{TARGET_PROFILE}/"
         print(f"🎯 टारगेट प्रोफाइल पर जा रहा हूँ: {profile_url}")
         page.goto(profile_url)
-        page.wait_for_timeout(5000)
+        page.wait_for_timeout(6000)
         
-        # नवीनतम पोस्ट पर क्लिक करें और उसका स्टाइल सीखें
+        # नवीनतम पोस्ट चेक करें
         try:
             print("🔍 नवीनतम पोस्ट खोलकर स्टाइल/कैप्शन चेक कर रहा हूँ...")
-            # पहली फोटो पोस्ट का लिंक ढूंढें
             first_post = page.locator('a[href^="/p/"]').first
             first_post.click()
-            page.wait_for_timeout(4000)
+            page.wait_for_timeout(5000)
             
             # कैप्शन टेक्स्ट निकालें
             caption_element = page.locator('article span').first
             caption_text = caption_element.inner_text()
             print(f"📝 नवीनतम पोस्ट का लाइव कैप्शन मिला: {caption_text[:150]}...")
             
-            # पोस्ट क्लोज करें
+            # क्लोज करें
             page.locator('svg[aria-label="Close"]').first.click()
             page.wait_for_timeout(2000)
             return caption_text
@@ -360,7 +359,8 @@ def generate_caption():
 
 def post_to_facebook(image_path, caption):
     print("📤 Facebook पर पोस्ट कर रहा हूँ...")
-    fb_url = f"https://graph.facebook.com/{FB_PAGE_ID}/photos"
+    # संस्करण विशिष्ट यूआरएल का उपयोग (Error 100 को पूरी तरह हल करने के लिए)
+    fb_url = f"https://graph.facebook.com/v18.0/{FB_PAGE_ID}/photos"
     
     payload = {
         'caption': caption,
@@ -394,20 +394,19 @@ def post_to_facebook(image_path, caption):
 
 def post_to_instagram_playwright(page, image_path, caption):
     """
-    प्लेराइट के ज़रिए सीधे ब्राउज़र से इंस्टाग्राम पर फोटो अपलोड करना
+    प्लेराइट के ज़रिए सीधे डेस्कटॉप व्यू से इंस्टाग्राम पर फोटो अपलोड करना
     """
     print("\n📤 [ऑटो-अपलोड] प्लेराइट ब्राउज़र के ज़रिए इंस्टाग्राम पर पोस्ट कर रहा हूँ...")
     try:
-        # इंस्टाग्राम होम पर जाएं
         page.goto("https://www.instagram.com/")
-        page.wait_for_timeout(5000)
+        page.wait_for_timeout(6000)
         
         # 'New Post' (+) बटन पर क्लिक करें
         create_btn = page.locator('svg[aria-label="New post"]').first
         create_btn.click()
-        page.wait_for_timeout(3000)
+        page.wait_for_timeout(4000)
         
-        # हिडन फाइल इनपुट का पता लगाएं और इमेज अपलोड करें
+        # इमेज अपलोड करें
         file_input = page.locator('input[type="file"]')
         file_input.set_input_files(image_path)
         page.wait_for_timeout(5000)
@@ -425,7 +424,7 @@ def post_to_instagram_playwright(page, image_path, caption):
         caption_textarea.fill(caption)
         page.wait_for_timeout(3000)
         
-        # 'Share' बटन पर क्लिक करें (अंतिम पोस्टिंग)
+        # 'Share' बटन पर क्लिक करें
         page.click('div:has-text("Share")')
         print("⏳ पोस्ट पब्लिश हो रही है, कृपया 12 सेकंड प्रतीक्षा करें...")
         page.wait_for_timeout(12000)
@@ -454,20 +453,32 @@ def cleanup_files(*files):
 
 def main():
     print("\n" + "="*60)
-    print("🚀 PLAYWRIGHT LOGIN & AUTO-POSTER BOT START")
+    print("🚀 PLAYWRIGHT DESKTOP BOT START")
     print("="*60)
     
     start_time = time.time()
     
     try:
         with sync_playwright() as p:
-            # हेडलेस क्रोमियम लॉन्च करें (GitHub Actions के लिए)
+            # हेडलेस क्रोमियम लॉन्च करें (Actions के लिए)
             browser = p.chromium.launch(headless=True)
-            # मोबाइल आईफोन डिवाइस को एम्युलेट करें (ताकि लॉगिन ब्लॉक न हो)
-            context = browser.new_context(
-                user_agent="Mozilla/5.0 (iPhone; CPU iPhone OS 14_8 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Mobile/15E148 Safari/604.1",
-                viewport={"width": 375, "height": 812}
-            )
+            
+            # कुकीज़ (cookies.json) सपोर्ट चेक करें (बाईपास करने के लिए सर्वश्रेष्ठ तरीका)
+            cookies_path = "cookies.json"
+            if os.path.exists(cookies_path):
+                print("🍪 cookies.json मिल गया! इसका उपयोग करके सीधे लॉगिन कर रहा हूँ...")
+                context = browser.new_context(
+                    storage_state=cookies_path,
+                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+                    viewport={"width": 1280, "height": 800}
+                )
+            else:
+                # डेस्कटॉप व्यूपोर्ट सेट करें (लॉगिन लोकेटर एरर को हल करने के लिए)
+                context = browser.new_context(
+                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+                    viewport={"width": 1280, "height": 800}
+                )
+                
             page = context.new_page()
             
             # STEP 1: इंस्टाग्राम लॉगिन और लाइव स्टाइल चेकिंग
@@ -496,6 +507,13 @@ def main():
             # STEP 5: Instagram पर सीधे ब्राउज़र के ज़रिए पोस्ट करें (प्लेराइट)
             ig_success = post_to_instagram_playwright(page, image_path, caption)
             
+            # कुकीज़ सेव करें (ताकि अगली बार लॉगिन न करना पड़े)
+            try:
+                context.storage_state(path=cookies_path)
+                print("🍪 भविष्य के लिए cookies.json अपडेट कर दी गई है!")
+            except Exception as e:
+                print(f"⚠️ कुकीज़ सेव करने में असमर्थ: {e}")
+                
             browser.close()
             
         # STEP 6: क्लीनअप
