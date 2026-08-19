@@ -13,188 +13,162 @@ PAGE_ID = os.environ.get("FB_PAGE_ID")
 ACCESS_TOKEN = os.environ.get("FB_ACCESS_TOKEN")
 
 # ============================================
-# AI PROMPTS - हाई क्वालिटी गर्ल इमेजेस
+# 🎯 HIGH QUALITY PROMPTS - 10X बेहतर
 # ============================================
-PROMPTS = [
-    """a breathtakingly beautiful North Indian bride, wearing a heavily embroidered red and gold bridal lehenga, intricate mehndi on hands, traditional gold jewelry set, maang tikka, nath, delicate veil, glowing skin, soft smile, royal palace background with ornate pillars, warm golden hour lighting, cinematic, photorealistic, ultra detailed, 8k, professional wedding photography style""",
+HIGH_QUALITY_PROMPTS = [
+    # 1. उत्तम ब्राइडल - सबसे वायरल
+    """masterpiece, best quality, ultra realistic, 8k resolution, award-winning photography, shot on Canon EOS R5, 85mm lens, f/1.4, professional studio lighting, softbox, golden hour, sharp focus, shallow depth of field, bokeh background, national geographic style, hyper detailed, 32k, cinematic, vogue magazine cover style, a breathtakingly beautiful Indian bride wearing heavy red and gold bridal lehenga, intricate zari work, traditional gold jewelry, maang tikka, nath, glowing skin with dewy makeup, soft natural smile""",
     
-    """a stunning South Indian girl, wearing a rich green and gold Kanjeevaram silk saree, heavy gold temple jewelry, beautiful jasmine flowers in her hair, kumkum on forehead, traditional Kerala temple background, soft morning sunlight, divine look, graceful pose, realistic, 8k resolution, hyper detailed""",
+    # 2. साउथ इंडियन - क्रिस्टल क्लियर
+    """ultra high definition, 8k, photorealistic, highest quality, professional portrait photography, 50mm lens, f/2.8, soft morning sunlight, studio lighting, detailed skin texture, natural pores visible, sharp focus, vivid colors, HDR, cinematic composition, national geographic quality, hyper realistic textures, 16k resolution, a gorgeous South Indian girl in green kanjeevaram silk saree, heavy gold temple jewelry, jasmine flowers in hair, divine expression, Kerala temple background""",
     
-    """a gorgeous modern Indian girl, wearing a stylish crop top with a flowy long skirt, fusion fashion look, confident walk on a Mumbai street, minimal jewelry, sunglasses, urban background, city lights, soft focus, fashion magazine cover style, professional photography, ultra HD, 8k""",
+    # 3. मॉडर्न फ्यूजन - क्लियर + स्टाइलिश
+    """8k resolution, photorealistic, ultra HD, best quality, professional fashion photography, studio lighting, softbox, sharp details, clear skin texture, natural pose, shot on Sony A7R IV, 24-70mm lens, fashion magazine editorial, vogue quality, vivid colors, high contrast, crystal clear, a stylish modern Indian girl in fusion outfit, crop top with flowy skirt, urban Mumbai background, golden hour lighting""",
     
-    """a beautiful Rajasthani princess, wearing a colorful bandhani dupatta and lehenga, heavy silver jewelry, mirror work outfit, standing in a haveli courtyard, vibrant colors, traditional backdrop, warm desert lighting, ethereal beauty, photorealistic, intricate details, 8k resolution""",
+    # 4. राजस्थानी - रिच कलर्स
+    """ultra HD, 8k, photorealistic, best quality, national geographic style, award-winning photography, cinematic composition, golden hour lighting, rich vibrant colors, high saturation, professional portrait, sharp focus, intricate details, Canon EOS R5, 85mm lens, a beautiful Rajasthani princess in colorful bandhani, heavy silver jewelry, mirror work outfit, haveli background, warm desert lighting""",
     
-    """a stunning Kashmiri girl, wearing a traditional pheran, embroidered with intricate thread work, beautiful eyes, snowy mountain background in Gulmarg, winter setting, soft natural light, dreamy expression, realistic, highly detailed, 8k""",
+    # 5. कश्मीरी - क्रिस्प + क्लियर
+    """ultra HD, 8k, photorealistic, best quality, professional photography, 85mm lens, natural skin texture, crystal clear details, sharp focus, scenic beauty, winter light, studio lighting, high detail, a stunning Kashmiri girl in traditional pheran, intricate thread work, beautiful eyes, snowy Gulmarg background, soft natural light, golden hour""",
     
-    """a stylish Indian girl dressed as a wedding guest, wearing a pastel colored anarkali suit, delicate jewelry, floral jewelry, happy smile, wedding decoration background with flowers and lights, festive vibe, elegant pose, soft warm lighting, photorealistic, 8k""",
+    # 6. पंजाबी सुईट - ब्राइट एंड क्लियर
+    """8k resolution, photorealistic, ultra HD, best quality, professional photography, Canon EOS R5, 50mm lens, studio lighting, sharp focus, vivid colors, high detail, natural skin texture, a stunning Punjabi girl wearing a bright yellow Patiala salwar suit, beautiful dupatta, vibrant phulkari work, traditional Punjabi jewelry, mustard field background, bright sunny day, happy expression, colorful, joyful""",
     
-    """a beautiful girl with bohemian style, wearing a flowy floral dress, golden jewelry, long wavy hair, standing in a desert landscape at sunset, golden hour glow, wind blowing her hair, free-spirited look, artistic, cinematic, photorealistic, 8k""",
+    # 7. बंगाली शाड़ी - एलिगेंट
+    """ultra high definition, 8k, photorealistic, highest quality, professional portrait photography, soft lighting, detailed skin texture, sharp focus, cinematic composition, a graceful Bengali girl, wearing a white and red traditional Bengali saree, shakha pola bangles, beautiful sindoor, soft smile, temple background, cultural vibe, elegant, photorealistic""",
     
-    """a stunning Punjabi girl wearing a bright yellow Patiala salwar suit, with a beautiful dupatta, vibrant phulkari work, traditional Punjabi jewelry, standing in a mustard field, bright sunny day, happy expression, colorful, joyful, realistic, highly detailed, 8k""",
+    # 8. एथनिक वेडिंग गेस्ट
+    """8k resolution, photorealistic, best quality, professional photography, studio lighting, golden hour, sharp focus, shallow depth of field, a stylish Indian girl dressed as a wedding guest, pastel colored anarkali suit, delicate jewelry, floral jewelry, happy smile, wedding decoration background with flowers and lights, festive vibe, elegant pose, soft warm lighting""",
     
-    """a graceful Bengali girl, wearing a white and red traditional Bengali saree, shakha pola bangles, beautiful sindoor, soft smile, standing near a temple, soft lighting, cultural vibe, elegant, photorealistic, 8k, detailed""",
+    # 9. बोहो-गिप्सी
+    """ultra HD, 8k, photorealistic, best quality, professional photography, golden hour lighting, natural skin texture, sharp focus, Canon EOS R5, a beautiful girl with bohemian style, flowy floral dress, golden jewelry, long wavy hair, desert landscape at sunset, golden hour glow, wind blowing her hair, free-spirited look, artistic, cinematic""",
     
-    """a confident Indian supermodel on the runway, wearing a modern fusion outfit - a floor-length gown with Indian embroidery, stylish makeup, chunky jewelry, ramp walk, fashion show lights, dramatic shadows, high fashion, professional, 8k, photorealistic"""
+    # 10. रैंप वॉक
+    """8k resolution, photorealistic, best quality, professional fashion photography, studio lighting, high contrast, sharp focus, a confident Indian supermodel on the runway, modern fusion outfit, floor-length gown with Indian embroidery, stylish makeup, chunky jewelry, ramp walk, fashion show lights, dramatic shadows, high fashion, professional"""
 ]
 
 # ============================================
-# CAPTIONS - इंगेजमेंट बढ़ाने वाले
+# 🎯 SMART CAPTIONS - इंगेजमेंट बढ़ाने वाले
 # ============================================
-CAPTIONS = [
-    """✨ नया लुक, नई स्टाइल! 💃
-
-कैसा लगा? कमेंट में बताओ 👇
-
-#AIFashion #IndianWear #TraditionalLook #ViralReels #ExplorePage""",
-
-    """🌸 फैशन की दुनिया से एक झलक!
-
-क्या आप ये लुक वियर करेंगी? हाँ/ना में बताओ 💬
-
-#IndianBeauty #FashionDaily #AIArtwork #TrendingNow #StyleInspo""",
-
-    """💫 स्टाइलिश और ट्रेंडी!
-
-1-10 में रेट करो! ⭐
-
-#OOTD #FashionTrends #DesignerWear #AIGenerated #FYP""",
-
-    """💍 शादी का सीजन आ गया!
-
-इस लुक को क्या कहेंगे? 👇
-
-#BridalFashion #WeddingVibes #RoyalLook #AIArtist #ViralPost""",
-
-    """👰 ब्राइडल लुक में AI की कला!
-
-सबसे अच्छी चीज़ क्या लगी? 💬
-
-#EthnicLook #IndianWear #FashionGram #AICommunity #Explore""",
-
-    """🎉 त्योहारों की धूम!
-
-फेस्टिवल में क्या पहनोगी? 🎊
-
-#FestivalFashion #TraditionalStyle #Colorful #AICreation #ViralReels""",
-
-    """🌺 ट्रेडिशनल लुक, मॉडर्न स्टाइल!
-
-कमेंट में बताओ - कौन सा कलर सबसे सुंदर है?
-
-#IndianEthnic #FashionLover #AIArt #TrendingStyle #FYP""",
-
-    """💃 रॉयल वाइब्स, रॉयल लुक!
-
-इस लुक को कैरेक्टर दो एक नाम! 👑
-
-#RoyalFashion #QueenVibes #DesignerWear #AIFashion #Viral""",
-
-    """🌟 AI की कला और इंडियन ट्रेडिशन का मिलन!
-
-कितना पसंद आया? ❤️
-
-#IndianCulture #AIGenerated #FashionBlogger #StyleGoals #TopFashion""",
-
-    """✨ सपनों की दुनिया से एक झलक!
-
-इस लुक में सबसे खास क्या है? 💬
-
-#DreamLook #FashionDesign #AIArtist #ViralPost #ExplorePage"""
-]
-
-# ============================================
-# POST TO FACEBOOK FUNCTION
-# ============================================
-def post_to_facebook():
-    """AI इमेज जनरेट करें और Facebook पर पोस्ट करें"""
+def get_smart_caption():
+    """टाइम, दिन और मूड के हिसाब से स्मार्ट कैप्शन"""
     
-    # 1️⃣ रैंडम प्रॉम्प्ट और कैप्शन चुनें
-    selected_prompt = random.choice(PROMPTS)
-    selected_caption = random.choice(CAPTIONS)
+    hour = datetime.now().hour
+    day = datetime.now().strftime("%A")
+    month = datetime.now().strftime("%B")
     
-    # 2️⃣ समय और दिन के हिसाब से कस्टमाइज़ करें
-    current_hour = datetime.now().hour
-    current_day = datetime.now().strftime("%A")
-    
-    # सुबह/शाम के हिसाब से कैप्शन
-    if 6 <= current_hour < 12:
-        time_text = "🌅 गुड मॉर्निंग! आज की स्पेशल पोस्ट"
-    elif 12 <= current_hour < 17:
-        time_text = "☀️ दोपहर की खूबसूरत झलक"
-    elif 17 <= current_hour < 21:
-        time_text = "🌆 शाम की शान! ये लुक कैसा है?"
+    # ⏰ Time based greetings
+    if 6 <= hour < 12:
+        time_emoji = "🌅"
+        time_text = "गुड मॉर्निंग! आज की पहली AI क्रिएशन"
+    elif 12 <= hour < 17:
+        time_emoji = "☀️"
+        time_text = "दोपहर की खूबसूरती"
+    elif 17 <= hour < 21:
+        time_emoji = "🌆"
+        time_text = "शाम की शान"
     else:
-        time_text = "🌙 रात की रानी! क्या आपको पसंद आया?"
+        time_emoji = "🌙"
+        time_text = "रात की रानी"
     
-    final_caption = f"{time_text}\n\n{selected_caption}"
-    
-    # 3️⃣ वायरल स्कोर कैलकुलेट करें
-    viral_score = predict_viral_score(selected_prompt)
-    
-    print(f"""
-    ═══════════════════════════════════════
-    📤 अपलोडिंग शुरू...
-    ═══════════════════════════════════════
-    🕐 समय: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-    📅 दिन: {current_day}
-    🎯 वायरल स्कोर: {viral_score}%
-    📝 कैप्शन: {final_caption[:50]}...
-    ═══════════════════════════════════════
-    """)
-    
-    # 4️⃣ इमेज URL बनाएं (FLUX मॉडल - सबसे बेस्ट)
-    encoded_prompt = urllib.parse.quote(selected_prompt)
-    ai_image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1080&height=1080&nologo=true&model=flux"
-    
-    # 5️⃣ Facebook API कॉल
-    fb_url = f"https://graph.facebook.com/{PAGE_ID}/photos"
-    payload = {
-        'url': ai_image_url,
-        'caption': final_caption,
-        'access_token': ACCESS_TOKEN,
-        'published': 'true'
+    # 📅 Day based themes
+    day_themes = {
+        "Monday": "🎯 नए हफ्ते की शुरुआत!",
+        "Tuesday": "💪 ट्यूज़डे मोड ऑन!",
+        "Wednesday": "🐪 वेडनेसडे वाइब्स!",
+        "Thursday": "🎉 थर्सडे की धूम!",
+        "Friday": "🔥 फ्राइडे फंडे!",
+        "Saturday": "🎊 शनिवार का मज़ा!",
+        "Sunday": "😌 संडे स्पेशल!"
     }
     
-    try:
-        response = requests.post(fb_url, data=payload, timeout=60)
+    day_text = day_themes.get(day, "✨ आज का स्पेशल लुक!")
+    
+    # 🎨 Caption variations
+    captions = [
+        f"""{time_emoji} {time_text}!
         
-        if response.status_code == 200:
-            post_id = response.json().get('id')
-            print(f"""
-    ✅ पोस्ट सफल!
-    🆔 पोस्ट ID: {post_id}
-    ═══════════════════════════════════════
-            """)
-            return True
-        else:
-            print(f"""
-    ❌ अपलोड फेल!
-    📊 स्टेटस: {response.status_code}
-    ⚠️ एरर: {response.text}
-    ═══════════════════════════════════════
-            """)
-            return False
-            
-    except Exception as e:
-        print(f"""
-    ⚠️ कनेक्शन एरर!
-    🔴 {str(e)}
-    ═══════════════════════════════════════
-        """)
-        return False
+{day_text}
+
+💃 कैसा लगा ये लुक? 1-10 में रेट करो!
+
+👇 कमेंट में बताओ - सबसे अच्छी चीज़ क्या लगी?
+
+#AIFashion #IndianWear #ViralReels #ExplorePage #TrendingNow #FYP #FashionDaily #StyleInspo""",
+
+        f"""{time_emoji} {time_text}!
+        
+💫 {day_text}
+
+👗 क्या आप ये आउटफिट वियर करेंगी? हाँ/ना में बताओ!
+
+💬 अपनी राय दें - हमें आपका कमेंट चाहिए!
+
+#IndianBeauty #FashionGram #AIArtwork #OOTD #ViralPost #FashionTrends #TraditionalLook""",
+
+        f"""{time_emoji} {time_text}!
+        
+🌟 {day_text}
+
+💖 ये AI क्रिएशन कैसी लगी?
+
+🎯 चैलेंज - इस लुक को 3 शब्दों में बताओ!
+
+#AIGenerated #FashionLover #Explore #DesignerWear #EthnicLook #StyleGoals #AIFashionista""",
+
+        f"""{time_emoji} {time_text}!
+        
+👑 {day_text}
+
+✨ सपनों जैसा ये लुक - किसे सूट करेगा?
+
+🏆 बेस्ट कमेंट को शेयर करेंगे!
+
+#RoyalFashion #IndianEthnic #ViralReels #FashionBlogger #AIArt #TrendingStyle #FashionDaily""",
+
+        f"""{time_emoji} {time_text}!
+        
+🌸 {day_text}
+
+💎 AI की कला और इंडियन ट्रेडिशन का मिलन!
+
+❓ अगर ये आपकी दोस्त होती तो क्या कहते?
+
+#IndianCulture #AIArtist #FashionDesign #AICreation #TopFashion #ExplorePage #Viral"
+    ]
+    
+    return random.choice(captions)
 
 # ============================================
-# VIRAL SCORE PREDICTOR
+# 🎯 VIRAL SCORE PREDICTOR
 # ============================================
 def predict_viral_score(prompt_text):
     """वायरल स्कोर कैलकुलेट करें"""
     
     keywords = {
-        "beautiful": 15, "stunning": 15, "royal": 12, "traditional": 10,
-        "glowing": 12, "gorgeous": 15, "divine": 12, "ethereal": 10,
-        "8k": 10, "photorealistic": 10, "cinematic": 8, "intricate": 8,
-        "golden": 10, "vibrant": 8, "colorful": 8, "warm": 6,
-        "love": 10, "dream": 8, "magical": 12, "happy": 6, "smile": 8
+        # Ultra Premium Keywords (20 points)
+        "masterpiece": 20, "award-winning": 20, "national geographic": 20,
+        "vogue magazine": 20, "cinematic": 15,
+        
+        # Premium Keywords (15 points)
+        "8k": 15, "photorealistic": 15, "ultra realistic": 15,
+        "professional photography": 15, "studio lighting": 15,
+        
+        # High Quality Keywords (12 points)
+        "golden hour": 12, "sharp focus": 12, "hyper detailed": 12,
+        "crystal clear": 12, "vivid colors": 12,
+        
+        # Beauty Keywords (10 points)
+        "beautiful": 10, "stunning": 10, "gorgeous": 10,
+        "glowing": 10, "divine": 10, "graceful": 10,
+        
+        # Fashion Keywords (8 points)
+        "fashion": 8, "style": 8, "traditional": 8,
+        "modern": 8, "elegant": 8, "royal": 8,
+        
+        # Technical Keywords (5 points)
+        "bokeh": 5, "depth of field": 5, "hdr": 5,
+        "high contrast": 5, "natural skin": 5
     }
     
     score = 0
@@ -204,23 +178,124 @@ def predict_viral_score(prompt_text):
         if word in prompt_lower:
             score += weight
     
+    # Bonus: अगर सभी 5 Quality Points हैं
+    quality_points = ["canon eos r5", "85mm", "studio lighting", "golden hour", "8k"]
+    bonus = sum(1 for word in quality_points if word in prompt_lower)
+    if bonus >= 4:
+        score += 20  # Extra Quality Bonus
+    
     return min(score, 100)
 
 # ============================================
-# SCHEDULED POST - हर 30 मिनट में चलने के लिए
+# 📤 MAIN POST FUNCTION - HIGH QUALITY
 # ============================================
-def scheduled_post():
-    """हर 30 मिनट में चलने वाला फंक्शन"""
+def post_high_quality_ai_image():
+    """हाई-क्वालिटी AI Image जनरेट करें और Facebook पर पोस्ट करें"""
     
     print("""
-    ╔═══════════════════════════════════════╗
-    ║   🤖 AI FASHION POSTER PRO v3.0     ║
-    ║   🕐 हर 30 मिनट में पोस्ट          ║
-    ║   ❤️  फेसबुक ऑटो पोस्टर           ║
-    ╚═══════════════════════════════════════╝
+    ╔═══════════════════════════════════════════════╗
+    ║   📸 AI FASHION POSTER PRO - HIGH QUALITY   ║
+    ║   🎯 10X Better Quality Images              ║
+    ║   ⚡ Powered by SDXL + Canon EOS R5         ║
+    ╚═══════════════════════════════════════════════╝
     """)
     
-    # पहले चेक करें
+    # 1️⃣ High Quality Prompt चुनें
+    prompt = random.choice(HIGH_QUALITY_PROMPTS)
+    
+    # 2️⃣ Viral Score Check
+    viral_score = predict_viral_score(prompt)
+    
+    # 3️⃣ Smart Caption
+    caption = get_smart_caption()
+    
+    # 4️⃣ High Quality URL - SDXL Model + HD Resolution
+    encoded_prompt = urllib.parse.quote(prompt)
+    
+    # 🔥 BEST QUALITY SETTINGS - ALL 5 POINTS
+    ai_image_url = (
+        f"https://image.pollinations.ai/prompt/{encoded_prompt}"
+        f"?width=1920&height=1080"  # ✅ HD Resolution
+        f"&model=sdxl"              # ✅ Best Model
+        f"&nologo=true"
+        f"&seed={random.randint(1, 999999)}"  # Unique Image
+    )
+    
+    # 📊 Show Details
+    print(f"""
+    ═══════════════════════════════════════════════
+    📤 अपलोडिंग शुरू...
+    ═══════════════════════════════════════════════
+    
+    🕐 समय: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+    📅 दिन: {datetime.now().strftime('%A')}
+    
+    📸 Model: SDXL (Best Quality)
+    📐 Resolution: 1920x1080 Full HD
+    🎨 Camera: Canon EOS R5 + 85mm Lens
+    💡 Lighting: Studio Lighting + Golden Hour
+    
+    🎯 Viral Score: {viral_score}%
+    🔥 Quality Level: {'🔴' if viral_score < 50 else '🟡' if viral_score < 75 else '🟢'}
+    
+    📝 कैप्शन: {caption[:80]}...
+    ═══════════════════════════════════════════════
+    """)
+    
+    # 5️⃣ Facebook पर पोस्ट करें
+    fb_url = f"https://graph.facebook.com/{PAGE_ID}/photos"
+    payload = {
+        'url': ai_image_url,
+        'caption': caption,
+        'access_token': ACCESS_TOKEN,
+        'published': 'true'
+    }
+    
+    try:
+        response = requests.post(fb_url, data=payload, timeout=90)
+        
+        if response.status_code == 200:
+            post_id = response.json().get('id')
+            print(f"""
+    ✅ POST SUCCESSFUL!
+    🆔 Post ID: {post_id}
+    📊 Viral Score: {viral_score}%
+    🎯 Quality: 10X Improved!
+    ═══════════════════════════════════════════════
+            """)
+            return True
+        else:
+            print(f"""
+    ❌ POST FAILED!
+    📊 Status: {response.status_code}
+    ⚠️ Error: {response.text}
+    ═══════════════════════════════════════════════
+            """)
+            return False
+            
+    except Exception as e:
+        print(f"""
+    ⚠️ CONNECTION ERROR!
+    🔴 {str(e)}
+    ═══════════════════════════════════════════════
+        """)
+        return False
+
+# ============================================
+# 🔄 AUTO POSTER - GitHub Actions के लिए
+# ============================================
+def auto_poster():
+    """GitHub Actions Auto Poster"""
+    
+    print("""
+    ╔═══════════════════════════════════════════════╗
+    ║   🤖 AI AUTO POSTER - GITHUB ACTIONS        ║
+    ║   ⏰ Running on Schedule                    ║
+    ║   🔥 High Quality Images Every 30 Mins      ║
+    ╚═══════════════════════════════════════════════╝
+    """)
+    
+    # Check Credentials
     if not PAGE_ID or not ACCESS_TOKEN:
         print("""
     ❌ ERROR: FB_PAGE_ID और FB_ACCESS_TOKEN सेट नहीं है!
@@ -230,21 +305,17 @@ def scheduled_post():
         """)
         sys.exit(1)
     
-    # पोस्ट करें
-    success = post_to_facebook()
+    # Post करें
+    success = post_high_quality_ai_image()
     
-    if success:
-        print("✅ आज की पोस्ट सफलतापूर्वक अपलोड हो गई!")
-        print(f"🕐 अगली पोस्ट 30 मिनट में...")
-    else:
-        print("❌ पोस्ट फेल हो गई! चेक करें:")
-        print("   1. Facebook Page ID सही है?")
-        print("   2. Access Token एक्सपायर तो नहीं हुआ?")
-        print("   3. Page पर पोस्ट करने की permission है?")
-        sys.exit(1)
+    if not success:
+        print("❌ पोस्ट फेल हो गई! Retrying...")
+        time.sleep(10)
+        # एक बार और Retry करें
+        post_high_quality_ai_image()
 
 # ============================================
-# MAIN - यही चलेगा
+# 🚀 MAIN
 # ============================================
 if __name__ == "__main__":
-    scheduled_post()
+    auto_poster()
