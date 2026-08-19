@@ -13,7 +13,39 @@ PAGE_ID = os.environ.get("FB_PAGE_ID")
 ACCESS_TOKEN = os.environ.get("FB_ACCESS_TOKEN")
 
 # ============================================
-# HIGH QUALITY PROMPTS - 10X BETTER
+# TOKEN REFRESH FUNCTION
+# ============================================
+def refresh_token_if_needed():
+    """Check and refresh token if expired"""
+    
+    global ACCESS_TOKEN
+    
+    if not ACCESS_TOKEN:
+        print("❌ No access token found!")
+        return False
+    
+    # Test current token
+    test_url = f"https://graph.facebook.com/me?access_token={ACCESS_TOKEN}"
+    try:
+        response = requests.get(test_url, timeout=10)
+        
+        if response.status_code == 200:
+            print("✅ Token is valid!")
+            return True
+        elif "Session has expired" in response.text:
+            print("⚠️ Token expired! Please update GitHub Secret.")
+            print("📌 Get new token from Facebook Developer Console")
+            return False
+        else:
+            print(f"⚠️ Token error: {response.text}")
+            return False
+            
+    except Exception as e:
+        print(f"⚠️ Connection error: {e}")
+        return False
+
+# ============================================
+# HIGH QUALITY PROMPTS
 # ============================================
 HIGH_QUALITY_PROMPTS = [
     """masterpiece, best quality, ultra realistic, 8k resolution, award-winning photography, shot on Canon EOS R5, 85mm lens, f/1.4, professional studio lighting, softbox, golden hour, sharp focus, shallow depth of field, bokeh background, national geographic style, hyper detailed, 32k, cinematic, vogue magazine cover style, a breathtakingly beautiful Indian bride wearing heavy red and gold bridal lehenga, intricate zari work, traditional gold jewelry, maang tikka, nath, glowing skin with dewy makeup, soft natural smile""",
@@ -38,7 +70,7 @@ HIGH_QUALITY_PROMPTS = [
 ]
 
 # ============================================
-# SMART CAPTIONS - HIGH ENGAGEMENT
+# SMART CAPTIONS
 # ============================================
 def get_smart_caption():
     """Generate smart captions based on time"""
@@ -179,7 +211,12 @@ def post_high_quality_ai_image():
     ===================================================
     """)
     
-    # 6. Post to Facebook
+    # 6. Check token validity first
+    if not refresh_token_if_needed():
+        print("❌ Token invalid! Please update GitHub Secret.")
+        return False
+    
+    # 7. Post to Facebook
     fb_url = f"https://graph.facebook.com/{PAGE_ID}/photos"
     payload = {
         'url': ai_image_url,
@@ -241,12 +278,19 @@ def auto_poster():
         """)
         sys.exit(1)
     
+    # Token check
+    if not refresh_token_if_needed():
+        print("""
+    ❌ TOKEN EXPIRED!
+    📌 Get new token from Facebook Developer Console
+    📌 Update GitHub Secret: FB_ACCESS_TOKEN
+        """)
+        sys.exit(1)
+    
     success = post_high_quality_ai_image()
     
     if not success:
-        print("❌ Post failed! Retrying...")
-        time.sleep(10)
-        post_high_quality_ai_image()
+        print("❌ Post failed!")
 
 # ============================================
 # MAIN
