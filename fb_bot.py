@@ -1,160 +1,50 @@
 import requests
 import random
 import os
-import urllib.parse
+import sys
 import time
-import json
-import base64
 from datetime import datetime
 
 # ============================================
-# ENVIRONMENT VARIABLES
+# ENVIRONMENT VARIABLES (GitHub Secrets से आएंगे)
 # ============================================
 PAGE_ID = os.environ.get("FB_PAGE_ID")
 ACCESS_TOKEN = os.environ.get("FB_ACCESS_TOKEN")
-IG_USER_ID = os.environ.get("IG_USER_ID")  # Instagram Business ID
+HF_TOKEN = os.environ.get("HF_TOKEN")
 
 # ============================================
-# 🔍 SOCIAL MEDIA TRENDING GIRL FINDER
+# HIGH QUALITY FLUX PROMPTS - (हमेशा फुल-बॉडी और रियलिस्टिक फोटो)
 # ============================================
-def find_trending_girls():
-    """Trending Girls की Photos ढूंढो"""
+PERFECT_FACE_PROMPTS = [
+    """Full-length portrait photograph of a beautiful Indian bride standing gracefully. She is wearing a traditional red designer lehenga with intricate gold embroidery. The shot shows her entire outfit from head to toe. Symmetrical gold wedding jewelry, a delicate maang tikka, matching earrings, and a small nose ring. Soft, glowing golden hour light illuminates the scene, showcasing natural skin texture with subtle film grain. The background is a soft-focus elegant palace corridor. Shot on 35mm film, Kodak Portra 400, authentic analog photography style.""",
     
-    print("""
-    ============================================================
-    🔍 SEARCHING TRENDING GIRLS...
-    🎯 Finding the most trending girls on social media
-    ============================================================
-    """)
+    """Medium-full shot of a South Indian young woman wearing a rich green Kanjeevaram silk saree with a golden border. The photo shows her from the knees up, displaying the full drape of the saree. She is wearing traditional gold temple jewelry with perfectly identical earrings and has jasmine flowers in her hair. The background is a softly blurred traditional Kerala temple courtyard. Soft morning sunlight casting natural shadows, realistic skin pores, candid photo style.""",
     
-    # 🌟 Instagram से Trending Hashtags के साथ Photos
-    trending_hashtags = [
-        "indianfashion",
-        "indianbeauty",
-        "bollywoodfashion",
-        "southindianbeauty",
-        "punjabigirl",
-        "keralagirl",
-        "bengaligirl",
-        "rajasthanigirl",
-        "delhigirl",
-        "mumbaigirl"
-    ]
+    """Full-length fashion photograph of a modern Indian woman wearing an elegant pastel yellow crop top and a flowy designer ethnic skirt. She is standing outdoors with a blurred urban city background during sunset. The golden hour light reflects naturally on her skin. Her hands are resting on her waist, showcasing realistic fingers. The fabric of her skirt flows naturally with realistic drape and folds. Shot on a professional 50mm camera, high fidelity photo, no plastic look.""",
     
-    selected_hashtag = random.choice(trending_hashtags)
+    """Full-body candid portrait of a beautiful Rajasthani woman in a vibrant, colorful bandhani outfit with intricate silver jewelry. She is standing in front of a majestic ancient haveli during the warm afternoon. The shot captures her entire dress, displaying natural folds in the fabric. The lighting highlights her sharp, symmetric facial features. Symmetrical identical earrings, authentic skin texture with natural pores, analog film look.""",
     
-    print(f"📌 Searching for: #{selected_hashtag}")
+    """Full-length scenic portrait of a young Kashmiri woman wearing a traditional dark pheran with detailed colorful Kashmiri embroidery. She is standing in a snow-covered Gulmarg landscape, with the majestic mountains blurred in the background. Her face is clear with rosy cheeks and natural skin texture. Symmetrical silver earrings, natural clothing folds with accurate physics. Shot on a professional DSLR, authentic photo style.""",
     
-    try:
-        if IG_USER_ID and ACCESS_TOKEN:
-            # Instagram Business API से Photos लो
-            url = f"https://graph.facebook.com/{IG_USER_ID}/media"
-            params = {
-                'fields': 'id,caption,media_url,permalink,timestamp',
-                'access_token': ACCESS_TOKEN,
-                'limit': 20
-            }
-            response = requests.get(url, params=params)
-            data = response.json()
-            
-            images = []
-            for media in data.get('data', []):
-                if media.get('media_url'):
-                    images.append({
-                        'id': media.get('id'),
-                        'url': media.get('media_url'),
-                        'caption': media.get('caption', ''),
-                        'source': 'Instagram',
-                        'hashtag': selected_hashtag
-                    })
-            
-            print(f"✅ Found {len(images)} trending images")
-            return images
-        else:
-            print("⚠️ Instagram not configured, using AI-generated images")
-            return []
-            
-    except Exception as e:
-        print(f"⚠️ Error fetching Instagram photos: {e}")
-        return []
+    """Medium-full shot of a young Punjabi woman wearing a bright yellow Patiala salwar suit with a colorful phulkari dupatta. She is standing happily in a lush green mustard field under a clear blue sky. The camera captures her from the knees up, showing the full traditional suit. Natural bright sunlight, realistic eyes, natural skin texture, perfectly matched earrings, realistic fabric movement.""",
+    
+    """Full-length traditional portrait of a Bengali woman in a classic white saree with a thick red border (laal paar saree). She is wearing traditional gold bangles, perfectly matched symmetrical gold earrings, and is standing gracefully in front of a beautifully decorated Durga Puja pandal. Saree fabric drapes naturally to the ground, soft realistic lighting, analog photo quality.""",
+    
+    """Full-body fashion portrait of an Indian wedding guest in a pastel-colored designer anarkali suit. She is standing in a softly lit wedding venue with warm decorative lights in the background. The photo shows her entire outfit with elegant, natural folds. Sharp focus on her natural face, symmetrical delicate jewelry, authentic skin pores, shot on film style."""
+]
 
 # ============================================
-# 🎨 AI MODEL - TRENDING GIRL COPY (Optimized for Realism & Full Body)
+# REAL PHOTO & DETAIL ENHANCER (CGI और प्लास्टिक लुक हटाने के लिए)
 # ============================================
-def create_ai_girl_from_reference(reference_photo_url=None):
-    """Reference Photo के आधार पर AI Girl बनाओ (Hyper-Realistic, Symmetrical & Full Body)"""
-    
-    print("""
-    ============================================================
-    🎨 CREATING AI GIRL MODEL...
-    📸 Generating trending girl style AI image (Full Body & Real Photo)
-    ============================================================
-    """)
-    
-    # 🎯 Trending Girl Styles (सभी प्रॉम्प्ट्स अब फुल-बॉडी/मीडियम-फुल शॉट पर केंद्रित हैं)
-    trending_styles = [
-        "full-body portrait of a beautiful Indian girl, modern fashion, trendy outfit, shot on 35mm film, Kodak Portra 400, natural skin pores, realistic",
-        "medium-full shot of a stunning South Indian beauty, traditional saree, identical gold earrings, natural draping, authentic photo",
-        "full-length photograph of a gorgeous Punjabi girl, colorful suit, realistic clothing folds with accurate physics, sunny day, analog look",
-        "full-body elegant Bengali girl, white saree with red border, symmetrical jewelry, soft realistic lighting, high-fidelity photograph",
-        "full-length Rajasthani princess, royal outfit with natural fabric draping, silver ornaments, majestic haveli background, genuine photo style",
-        "full-body modern Indian influencer, street fashion, Mumbai street background, candid photography, realistic skin texture, no plastic look",
-        "medium-full shot of a Kashmiri beauty, traditional pheran with detailed embroidery, snowy Gulmarg background, natural soft lighting"
-    ]
-    
-    # 🌟 Trending Girl Prompts (ये सुनिश्चित करते हैं कि हर बार फोटो फुल आए)
-    trending_prompts = [
-        """A full-length fashion photograph of a beautiful Indian influencer girl, wearing a trendy crop top with high-waisted jeans. The shot shows her entire outfit from head to toe as she walks on a Mumbai street. Golden hour lighting, natural skin texture, analog photography style.""",
-        
-        """A medium-full shot of a gorgeous South Indian bride wearing a rich green Kanjeevaram silk saree. The photo captures her from the knees up, displaying the full elegant drape of her saree. Heavy gold temple jewelry, jasmine flowers in hair, soft natural lighting, realistic facial features.""",
-        
-        """A full-body photograph of a stunning Punjabi girl wearing a bright yellow salwar suit with a colorful phulkari dupatta. She is standing in a lush green mustard field. The camera captures her complete outfit, showcasing natural clothing folds and realistic fabric draping in the gentle wind.""",
-        
-        """A full-length traditional portrait of a beautiful Rajasthani princess wearing a colorful lehenga with detailed mirror work and heavy silver jewelry. She is standing in a grand haveli courtyard. Symmetrical jewelry, authentic photography with natural skin pores.""",
-        
-        """A medium-full shot of a stylish modern Indian girl showcasing fusion fashion with a crop top and a flowy long designer skirt. The shot displays her complete attire, standing confidently against an urban background. Natural studio-quality light, realistic look."""
-    ]
-    
-    if reference_photo_url:
-        print("📸 Using reference photo details for AI generation")
-    
-    # Random Trending Prompt और Style चुनें
-    selected_prompt = random.choice(trending_prompts)
-    selected_style = random.choice(trending_styles)
-    
-    # 🔥 REAL PHOTO & DETAIL ENHANCER (यह आपके फोटो की सारी कमियों को हल करेगा)
-    photo_enhancer = """
-    , full-body shot showing the entire outfit, perfect facial symmetry, highly detailed eyes, natural skin texture with visible pores, subtle film grain, perfectly matched symmetrical identical earrings, natural soft fabric draping, realistic clothing folds with accurate physics, shot on 35mm film, analog photography, authentic photo, no CGI, no 3D render, no plastic look
-    """
-    
-    # Complete Prompt असेंबल करें
-    final_prompt = f"{selected_prompt}. {selected_style} {photo_enhancer}"
-    
-    # AI Image URL जनरेट करें
-    encoded_prompt = urllib.parse.quote(final_prompt.strip())
-    
-    ai_image_url = (
-        f"https://image.pollinations.ai/prompt/{encoded_prompt}"
-        f"?width=1080&height=1350"      # ✅ इंस्टाग्राम और फेसबुक के लिए परफेक्ट फुल-बॉडी आस्पेक्ट रेशियो
-        f"&model=flux"                  # ✅ नवीनतम FLUX मॉडल (बेस्ट फेस और हैंड्स के लिए)
-        f"&seed={random.randint(100000, 9999999)}"
-        f"&nologo=true"
-    )
-    
-    print(f"""
-    ✅ AI Girl Created Successfully!
-    📸 Composition: Full Body / Medium-Full Shot
-    🎨 Model: FLUX (Photo-Realism)
-    """)
-    
-    return ai_image_url
+PHOTO_ENHANCE = """
+, perfect facial symmetry, highly detailed eyes, natural skin texture with visible pores, subtle film grain, perfectly matched symmetrical identical earrings, natural soft fabric draping, realistic clothing folds with accurate physics, shot on 35mm film, analog photography, authentic photo, no CGI, no 3D render, no plastic look
+"""
 
 # ============================================
-# 📤 SMART CAPTION GENERATOR
+# SMART CAPTION GENERATOR
 # ============================================
 def generate_trending_caption():
-    """Trending Girls के लिए Smart Caption"""
-    
+    """समय के अनुसार स्मार्ट कैप्शन बनाएं"""
     hour = datetime.now().hour
     
     if 6 <= hour < 12:
@@ -167,216 +57,126 @@ def generate_trending_caption():
         time_text = "🌙 Night queen"
     
     captions = [
-        f"""
-{time_text}
-
+        f"""{time_text}
+        
 💃 Trending AI Girl - Inspired by today's top fashionistas!
 
 🎯 Question: 1-10 में रेट करो ये लुक कितना ट्रेंडी है?
-
-👇 Comment your rating!
+👇 कमेंट में बताओ - सबसे अच्छी चीज़ क्या लगी?
 
 #TrendingGirl #AIFashionista #ViralFashion #IndianBeauty #TrendingStyle #FYP #ExplorePage #ViralReels #AIFashion #StyleInspo""",
 
-        f"""
-{time_text}
-
+        f"""{time_text}
+        
 ✨ AI Generated - Trending Fashion Girl
 
-💫 Would you wear this outfit? Yes/No
+💫 क्या आप ये आउटफिट पहनेंगी? हाँ/ना में बताओ!
+💬 अपनी राय दें!
 
-💬 Drop your opinion below!
-
-#AIGirl #FashionTrends #IndianFashion #ViralPost #OOTD #StyleGoals #AICreation #Explore #TrendingNow""",
-
-        f"""
-{time_text}
-
-🔥 Meet the AI version of today's trending girl!
-
-🎯 Challenge: इस लुक को 3 शब्दों में बताओ!
-
-🏆 Best comment gets featured!
-
-#AIFashionista #TrendingStyle #IndianBeauty #FashionDaily #AIArtwork #ViralReels #ExplorePage #FYP""",
-
-        f"""
-{time_text}
-
-👑 AI Queen - Trending Fashion Edition
-
-💖 How do you like this AI creation?
-
-🤔 Who does she look like? Tell us in comments!
-
-#RoyalFashion #AIGenerated #TrendingGirl #FashionBlogger #AIArt #Viral #StyleInspo #FashionDaily"""
+#AIGirl #FashionTrends #IndianFashion #ViralPost #OOTD #StyleGoals #AICreation #Explore #TrendingNow"""
     ]
     
     return random.choice(captions)
 
 # ============================================
-# 📥 PHOTO DOWNLOADER
+# 🎨 GENERATE IMAGE FROM HUGGING FACE
 # ============================================
-def download_photo(url, filename="trending_photo.jpg"):
-    """Photo Download करो"""
-    try:
-        response = requests.get(url, timeout=30)
-        if response.status_code == 200:
-            with open(filename, 'wb') as f:
-                f.write(response.content)
-            print(f"✅ Photo downloaded: {filename}")
-            return filename
-        return None
-    except Exception as e:
-        print(f"⚠️ Error downloading: {e}")
-        return None
+def generate_flux_image(prompt_text, filename="temp_output.jpg"):
+    """Hugging Face API से FLUX.1-schnell मॉडल के जरिए इमेज बनाएं"""
+    print("🎨 Generating High Quality Image via Hugging Face...")
+    
+    API_URL = "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell"
+    headers = {"Authorization": f"Bearer {HF_TOKEN}"}
+    
+    payload = {
+        "inputs": prompt_text,
+        "parameters": {
+            "width": 1080,
+            "height": 1350
+        }
+    }
+    
+    for attempt in range(3):
+        try:
+            response = requests.post(API_URL, headers=headers, json=payload, timeout=90)
+            
+            if response.status_code == 200:
+                with open(filename, 'wb') as f:
+                    f.write(response.content)
+                print("✅ Image generated and saved locally!")
+                return filename
+            elif response.status_code == 503:
+                print("⏳ Model is loading on Hugging Face, waiting 15 seconds...")
+                time.sleep(15)
+            else:
+                print(f"⚠️ Hugging Face Error ({response.status_code}): {response.text}")
+                break
+        except Exception as e:
+            print(f"⚠️ Request Failed: {e}")
+            time.sleep(5)
+            
+    return None
 
 # ============================================
-# 📤 POST TO FACEBOOK
+# 📤 POST DIRECT IMAGE FILE TO FACEBOOK
 # ============================================
-def post_to_facebook(image_url, caption):
-    """Facebook पर Post करो"""
-    
+def post_local_file_to_facebook(image_path, caption):
+    """फेसबुक ग्राफ एपीआई का उपयोग करके इमेज फ़ाइल अपलोड करें"""
+    print("📤 Uploading direct image file to Facebook...")
     fb_url = f"https://graph.facebook.com/{PAGE_ID}/photos"
+    
     payload = {
-        'url': image_url,
         'caption': caption,
         'access_token': ACCESS_TOKEN,
         'published': 'true'
     }
     
     try:
-        response = requests.post(fb_url, data=payload, timeout=60)
+        with open(image_path, 'rb') as img_file:
+            files = {
+                'source': img_file
+            }
+            response = requests.post(fb_url, data=payload, files=files, timeout=120)
+            
         if response.status_code == 200:
             post_id = response.json().get('id')
-            print(f"""
-    ✅ POST SUCCESSFUL!
-    🆔 Post ID: {post_id}
-    📸 Real-Photo AI Girl Uploaded! (Full Body)
-    ============================================================
-            """)
+            print(f"✅ POST SUCCESSFUL! Post ID: {post_id}")
             return post_id
         else:
-            print(f"❌ Failed: {response.text}")
+            print(f"❌ Facebook Upload Failed: {response.text}")
             return None
     except Exception as e:
-        print(f"⚠️ Error: {e}")
+        print(f"⚠️ Error uploading to Facebook: {e}")
         return None
 
 # ============================================
 # 🎯 COMPLETE WORKFLOW
 # ============================================
 def trending_girl_bot():
-    """पूरा Bot Workflow"""
-    
-    print("""
-    ╔═══════════════════════════════════════════════════════════╗
-    ║   🔥 TRENDING GIRL AI BOT - REAL PHOTO EDITION           ║
-    ║   🎯 Finds Trending Girls → Creates AI Version          ║
-    ║   📸 Uploads to Facebook → Gets Viral!                 ║
-    ╚═══════════════════════════════════════════════════════════╝
-    """)
-    
-    if not PAGE_ID or not ACCESS_TOKEN:
-        print("❌ ERROR: Facebook credentials not set!")
+    """मुख्य वर्कफ़्लो"""
+    if not PAGE_ID or not ACCESS_TOKEN or not HF_TOKEN:
+        print("❌ ERROR: Required secrets are missing!")
         return False
+        
+    base_prompt = random.choice(PERFECT_FACE_PROMPTS)
+    final_prompt = base_prompt + PHOTO_ENHANCE
     
-    # Step 1: Trending Photos ढूंढो
-    trending_photos = find_trending_girls()
+    local_image = generate_flux_image(final_prompt)
     
-    # Step 2: Reference Photo चुनो (अगर मिली तो)
-    reference_url = None
-    if trending_photos:
-        selected = random.choice(trending_photos)
-        reference_url = selected.get('url')
-        print(f"📸 Reference Photo Found!")
-    
-    # Step 3: AI Girl बनाओ
-    ai_image_url = create_ai_girl_from_reference(reference_url)
-    
-    # Step 4: Caption Generate करो
+    if not local_image:
+        print("❌ Image generation failed!")
+        return False
+        
     caption = generate_trending_caption()
+    post_id = post_local_file_to_facebook(local_image, caption)
     
-    # Step 5: Facebook पर Post करो
-    post_id = post_to_facebook(ai_image_url, caption)
-    
+    if os.path.exists(local_image):
+        os.remove(local_image)
+        
     if post_id:
-        print("""
-    ✅ BOT WORKFLOW COMPLETE!
-    🔥 Trending AI Girl Posted Successfully!
-    🚀 Ready to go viral!
-        """)
+        print("🎉 Successfully completed!")
         return True
-    else:
-        print("❌ Bot workflow failed!")
-        return False
+    return False
 
-# ============================================
-# 📊 POST ANALYTICS
-# ============================================
-def get_post_stats(post_id):
-    """Post की Performance Check करो"""
-    
-    url = f"https://graph.facebook.com/{post_id}/insights"
-    params = {
-        'metric': 'post_impressions,post_reactions,post_comments,post_shares',
-        'access_token': ACCESS_TOKEN
-    }
-    
-    try:
-        response = requests.get(url, params=params)
-        data = response.json()
-        
-        stats = {}
-        for item in data.get('data', []):
-            stats[item['name']] = item.get('values', [{}])[0].get('value', 0)
-        
-        print("""
-    📊 POST PERFORMANCE:
-    👀 Impressions: {}
-    ❤️ Reactions: {}
-    💬 Comments: {}
-    🔄 Shares: {}
-        """.format(
-            stats.get('post_impressions', 0),
-            stats.get('post_reactions', 0),
-            stats.get('post_comments', 0),
-            stats.get('post_shares', 0)
-        ))
-        
-        return stats
-    except Exception as e:
-        print(f"⚠️ Error getting stats: {e}")
-        return {}
-
-# ============================================
-# 🤖 AUTO BOT - हर 30 मिनट में
-# ============================================
-def auto_bot():
-    """GitHub Actions Auto Bot"""
-    
-    print("""
-    ============================================================
-    🤖 TRENDING GIRL AI BOT
-    ⏰ Running Every 30 Minutes
-    🎯 Finding Trends → Creating AI → Posting
-    ============================================================
-    """)
-    
-    try:
-        # Run Bot
-        success = trending_girl_bot()
-        
-        if success:
-            print("✅ Bot executed successfully!")
-        else:
-            print("⚠️ Bot had issues, will retry next time")
-            
-    except Exception as e:
-        print(f"⚠️ Bot error: {e}")
-
-# ============================================
-# 🚀 MAIN
-# ============================================
 if __name__ == "__main__":
-    auto_bot()
+    trending_girl_bot()
