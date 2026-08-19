@@ -1,36 +1,37 @@
+import requests
+import random
 import os
 import sys
-import random
-import requests
-import base64
+import time
+import urllib.parse
 from datetime import datetime
 
 # ============================================
-# ENVIRONMENT VARIABLES
+# ENVIRONMENT VARIABLES (केवल फेसबुक सीक्रेट्स चाहिए)
 # ============================================
 PAGE_ID = os.environ.get("FB_PAGE_ID")
 ACCESS_TOKEN = os.environ.get("FB_ACCESS_TOKEN")
-GEMINI_API = os.environ.get("GEMINI_API")
 
-if not GEMINI_API:
-    print("❌ ERROR: GEMINI_API Key is missing in environment variables!")
+# Check if credentials are set
+if not PAGE_ID or not ACCESS_TOKEN:
+    print("❌ ERROR: Facebook credentials (PAGE_ID / ACCESS_TOKEN) are missing!")
     sys.exit(1)
 
 # ============================================
-# ULTRA-REALISTIC IMAGEN 3 PROMPTS (No Distortion)
+# OPTIMIZED MEDIUM-SHOT PROMPTS
 # ============================================
 PERFECT_FACE_PROMPTS = [
-    """A full-length photography of a beautiful Indian bride standing elegantly in a royal palace corridor. She is wearing a traditional red designer lehenga with highly detailed gold embroidery. Complete outfit visible from head to toe. She wears perfectly matched symmetrical gold wedding jewelry, a delicate maang tikka, and matching earrings. Soft glowing natural lighting, detailed skin texture, captured on a professional DSLR camera, highly realistic, flawless face, cinematic.""",
+    """A stunning medium-close up portrait of a beautiful Indian bride. She is wearing traditional red bridal wear with highly detailed gold embroidery. Sharp focus on her symmetrical face and expressive clear eyes. Wearing a delicate gold maang tikka and matching earrings. Soft glowing studio light, realistic skin texture with subtle film grain, shot on 85mm lens, f/1.4, flawless cinematic photo.""",
     
-    """A medium-full shot of a beautiful South Indian young woman wearing a rich green Kanjeevaram silk saree with a golden border. Showing her from the knees up, displaying the elegant drape of the saree. Symmetrical gold temple jewelry, jasmine flowers in her hair. Traditional temple background with soft morning sunlight, realistic skin pores, natural look, perfect face.""",
+    """Medium shot of a South Indian young woman wearing a rich green Kanjeevaram silk saree with a golden border, visible from waist up. She has jasmine flowers in her hair and wears traditional identical gold earrings. Traditional background with warm morning sunlight, natural skin pores, soft smile, highly detailed and realistic face.""",
     
-    """A full-length fashion photograph of a modern Indian influencer girl wearing an elegant pastel yellow crop top and a flowy designer ethnic skirt. Standing outdoors with a blurred urban city background during sunset, warm natural lighting on her skin, realistic hands, perfect body proportions, shot on 35mm film, authentic photo style.""",
+    """Close-up fashion portrait of a modern Indian influencer girl wearing an elegant pastel yellow dress, looking at the camera with a soft smile. Blurred city lights in the background during golden hour. Symmetrical delicate jewelry, realistic skin texture, beautiful eyes, captured on a professional DSLR, highly realistic.""",
     
-    """A full-body candid portrait of a beautiful Rajasthani woman in a vibrant, colorful bandhani outfit with intricate silver jewelry. Standing in a majestic ancient haveli courtyard during the warm afternoon. The camera captures her complete dress, realistic fabric folds, symmetrical identical earrings, flawless facial features, natural daylight.""",
+    """Medium portrait shot of a beautiful Rajasthani princess visible from waist up. She is wearing a vibrant colorful traditional outfit with intricate silver jewelry. Symmetrical identical silver earrings, flawless facial features, natural lighting, shot on 35mm film, analog photo style.""",
     
-    """A full-length portrait of a beautiful young Kashmiri woman wearing a traditional dark pheran with detailed colorful embroidery. Standing in a snow-covered Gulmarg landscape with blurred mountains in the background. Highly detailed face, rosy cheeks, realistic eyes, natural clothing folds, high fidelity photography.""",
+    """Close-up scenic portrait of a young Kashmiri woman wearing a traditional dark pheran with colorful embroidery. Beautiful rosy cheeks, detailed realistic eyes, snow-covered Gulmarg landscape blurred in the background. Natural soft daylight, highly realistic and authentic face texture.""",
     
-    """A traditional full-length portrait of a Bengali woman in a classic white saree with a thick red border (laal paar saree). Wearing traditional identical gold bangles and earrings, standing gracefully in front of a decorated Durga Puja pandal. Saree fabric drapes naturally to the ground, soft realistic lighting, authentic photo."""
+    """Medium shot of a Bengali woman in a classic white saree with a red border, visible from the chest up. She is wearing traditional identical gold bangles and earrings, smiling gracefully. Durga Puja pandal background with warm festive lights, sharp focus on her clear and flawless face."""
 ]
 
 # ============================================
@@ -69,39 +70,32 @@ def generate_trending_caption():
     return random.choice(captions)
 
 # ============================================
-# 🎨 GENERATE IMAGE FROM GOOGLE IMAGEN 3 (DIRECT REST API)
+# 🎨 GENERATE IMAGE FROM POLLINATIONS FLUX
 # ============================================
-def generate_imagen_3_image(prompt_text, filename="temp_output.jpg"):
-    """Google Imagen 3 API को सीधे कॉल करके इमेज जनरेट करें (No Library Required)"""
-    print("🎨 Generating Ultra-Realistic Image via Google Imagen 3 Direct API...")
+def generate_flux_image(prompt_text, filename="temp_output.jpg"):
+    """बिना किसी API Key के Pollinations FLUX इंजन से उच्च गुणवत्ता वाली इमेज बनाएं"""
+    print("🎨 Generating Image via Pollinations FLUX Engine (No API Key Required)...")
     
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:generateImages?key={GEMINI_API}"
-    
-    payload = {
-        "prompt": prompt_text,
-        "numberOfImages": 1,
-        "aspectRatio": "3:4",  # बेस्ट पोर्ट्रेट आकार
-        "outputMimeType": "image/jpeg"
-    }
+    encoded_prompt = urllib.parse.quote(prompt_text.strip())
+    flux_url = (
+        f"https://image.pollinations.ai/prompt/{encoded_prompt}"
+        f"?width=1080&height=1350"
+        f"&model=flux"
+        f"&nologo=true"
+        f"&seed={random.randint(1, 9999999)}"
+    )
     
     try:
-        response = requests.post(url, json=payload, timeout=120)
-        
+        response = requests.get(flux_url, timeout=90)
         if response.status_code == 200:
-            data = response.json()
-            # Base64 इमेज डेटा को डिकोड करके फाइल में सेव करें
-            image_b64 = data['generatedImages'][0]['image']['imageBytes']
-            image_bytes = base64.b64decode(image_b64)
-            
             with open(filename, 'wb') as f:
-                f.write(image_bytes)
-                
-            print("✅ Successfully generated via Google Imagen 3 REST API!")
+                f.write(response.content)
+            print("✅ Successfully generated via Pollinations FLUX!")
             return filename
         else:
-            print(f"❌ Google API Error ({response.status_code}): {response.text}")
+            print(f"❌ API Failed with status code: {response.status_code}")
     except Exception as e:
-        print(f"❌ Direct API Request Failed: {e}")
+        print(f"❌ Connection error: {e}")
         
     return None
 
@@ -138,29 +132,29 @@ def post_local_file_to_facebook(image_path, caption):
 # 🎯 COMPLETE WORKFLOW
 # ============================================
 def trending_girl_bot():
-    if not PAGE_ID or not ACCESS_TOKEN:
-        print("❌ ERROR: Facebook credentials (PAGE_ID, ACCESS_TOKEN) are missing!")
-        return False
-        
     final_prompt = random.choice(PERFECT_FACE_PROMPTS)
     
-    # सीधे API से इमेज बनाएं
-    local_image = generate_imagen_3_image(final_prompt)
+    # Image Generation
+    local_image = generate_flux_image(final_prompt)
     
     if not local_image:
         print("❌ Image generation failed!")
         return False
         
+    # Posting to Facebook
     caption = generate_trending_caption()
     post_id = post_local_file_to_facebook(local_image, caption)
     
+    # Clean up
     if os.path.exists(local_image):
         os.remove(local_image)
         
     if post_id:
-        print("🎉 Workflow successfully completed using Google Imagen 3 API!")
+        print("🎉 Workflow successfully completed without API Keys!")
         return True
     return False
 
 if __name__ == "__main__":
-    trending_girl_bot()
+    if not trending_girl_bot():
+        sys.exit(1)
+    sys.exit(0)
