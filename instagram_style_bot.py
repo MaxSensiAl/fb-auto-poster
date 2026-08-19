@@ -5,6 +5,8 @@ import random
 import requests
 import urllib.parse
 from datetime import datetime
+from requests.adapters import HTTPAdapter
+from urllib3.util import Retry
 from playwright.sync_api import sync_playwright
 
 # ============================================
@@ -25,6 +27,20 @@ if not FB_PAGE_ID or not FB_ACCESS_TOKEN:
 
 print(f"✅ Target: @{TARGET_PROFILE}")
 print(f"✅ Facebook Page: {FB_PAGE_ID[:3]}***")
+
+# ============================================
+# 🌐 मजबूत नेटवर्क सेशन सेटअप (DNS/NameResolution Error को रोकने के लिए)
+# ============================================
+session = requests.Session()
+retry_strategy = Retry(
+    total=5,  # कुल 5 बार प्रयास करेगा
+    backoff_factor=2,  # हर प्रयास के बीच थोड़ा समय बढ़ाएगा
+    status_forcelist=[429, 500, 502, 503, 504],
+    raise_on_status=False
+)
+adapter = HTTPAdapter(max_retries=retry_strategy)
+session.mount("https://", adapter)
+session.mount("http://", adapter)
 
 # ============================================
 # 🎨 MULTIPLE PROMPTS (अत्यंत यथार्थवादी चेहरों के लिए)
@@ -69,7 +85,7 @@ PROMPTS = [
     
     # 6. Festival Special
     """
-    A happy Indian woman celebrating Diwali, knee-up shot wearing a detailed traditional lehenga.
+    A happy Indian woman celebrating festival, knee-up shot wearing a detailed traditional lehenga.
     Vibrant colors, happy realistic expression, symmetrical face, detailed eyes.
     Background decorated with glowing traditional oil lamps (diyas), festive warm light.
     """,
@@ -112,7 +128,7 @@ def generate_ai_image_hf(prompt_text, model_id="black-forest-labs/FLUX.1-schnell
     Hugging Face API का उपयोग करके प्रीमियम क्वालिटी फोटो जनरेट करें
     """
     if not HF_TOKEN:
-        print("⚠️ HF_TOKEN नहीं मिला! पोलिनेशंस का उपयोग कर रहा हूँ...")
+        print("⚠️ HF_TOKEN नहीं मिला! बैकअप सर्वर का उपयोग कर रहा हूँ...")
         return None
         
     print(f"🚀 Hugging Face मॉडल ({model_id}) से फोटो बना रहा हूँ...")
@@ -122,20 +138,20 @@ def generate_ai_image_hf(prompt_text, model_id="black-forest-labs/FLUX.1-schnell
     payload = {
         "inputs": prompt_text,
         "parameters": {
-            "width": 768,
-            "height": 1024
+            "width": 1024,
+            "height": 1024  # स्थिर वर्गाकार रेशियो (सर्वश्रेष्ठ चेहरे के लिए)
         }
     }
     
     try:
-        response = requests.post(api_url, headers=headers, json=payload, timeout=120)
+        response = session.post(api_url, headers=headers, json=payload, timeout=120)
         
         # यदि मॉडल लोड हो रहा है, तो प्रतीक्षा करें
         if response.status_code == 503:
             estimated_time = response.json().get("estimated_time", 20)
             print(f"⏳ मॉडल लोड हो रहा है, {estimated_time:.1f} सेकंड प्रतीक्षा कर रहा हूँ...")
             time.sleep(min(estimated_time, 30))
-            response = requests.post(api_url, headers=headers, json=payload, timeout=120)
+            response = session.post(api_url, headers=headers, json=payload, timeout=120)
             
         if response.status_code == 200 and len(response.content) > 10000:
             with open(filename, 'wb') as f:
@@ -143,10 +159,10 @@ def generate_ai_image_hf(prompt_text, model_id="black-forest-labs/FLUX.1-schnell
             print("✅ Hugging Face से हाई-क्वालिटी फोटो डाउनलोड हो गई!")
             return filename
         else:
-            print(f"❌ HF Model Error: {response.status_code} - {response.text[:200]}")
+            print(f"❌ HF Model Error: {response.status_code}")
             return None
     except Exception as e:
-        print(f"❌ HF Connection Error: {e}")
+        print(f"❌ HF Connection Error (Bypassed): {e}")
         return None
 
 def generate_ai_image(prompt_text, filename="generated_photo.jpg"):
@@ -159,20 +175,21 @@ def generate_ai_image(prompt_text, filename="generated_photo.jpg"):
         enhance_image_quality(image_path)
         return image_path
         
-    # 2. दूसरा प्रयास (Fallback 1): RealVisXL V4.0 (सर्वश्रेष्ठ वास्तविक चेहरों के लिए)
+    # 2. दूसरा प्रयास (Fallback 1): RealVisXL V4.0 (वास्तविक चेहरों के लिए)
     image_path = generate_ai_image_hf(prompt_text, "SG161222/RealVisXL_V4.0", filename)
     if image_path:
         enhance_image_quality(image_path)
         return image_path
 
-    # 3. तीसरा प्रयास (Fallback 2): Pollinations एआई (बैकअप)
-    print("🔄 बैकअप सर्वर पर स्विच कर रहा हूँ...")
+    # 3. तीसरा प्रयास (Fallback 2): पोलिनेशंस बैकअप (सुरक्षित 1024x1024 रेशियो)
+    print("🔄 बैकअप पोलिनेशंस सर्वर पर स्विच कर रहा हूँ...")
     clean_prompt = prompt_text.strip().replace('\n', ' ').replace('  ', ' ')
     encoded_prompt = urllib.parse.quote(clean_prompt[:250])
     
+    # चेहरे को बिल्कुल साफ रखने के लिए परफेक्ट 1024x1024 आकार
     flux_url = (
         f"https://image.pollinations.ai/prompt/{encoded_prompt}"
-        f"?width=1024&height=1280"
+        f"?width=1024&height=1024"  # वर्गाकार आकार चेहरे को विकृत होने से पूरी तरह बचाता है
         f"&model=flux"
         f"&nologo=true"
         f"&seed={random.randint(1, 9999999)}"
@@ -181,11 +198,11 @@ def generate_ai_image(prompt_text, filename="generated_photo.jpg"):
     )
     
     try:
-        response = requests.get(flux_url, timeout=120)
+        response = session.get(flux_url, timeout=120)
         if response.status_code == 200 and len(response.content) > 50000:
             with open(filename, 'wb') as f:
                 f.write(response.content)
-            print("✅ पोलिनेशंस बैकअप से फोटो डाउनलोड हो गई!")
+            print("✅ पोलिनेशंस बैकअप से स्थिर फोटो डाउनलोड हो गई!")
             enhance_image_quality(filename)
             return filename
     except Exception as e:
@@ -195,8 +212,8 @@ def generate_ai_image(prompt_text, filename="generated_photo.jpg"):
 
 def create_placeholder_image(filename="placeholder.jpg"):
     try:
-        from PIL import Image, ImageDraw
-        img = Image.new('RGB', (1024, 1280), color=(255, 200, 230))
+        from PIL import Image
+        img = Image.new('RGB', (1024, 1024), color=(255, 200, 230))
         img.save(filename)
         return filename
     except:
@@ -219,21 +236,21 @@ def enhance_image_quality(image_path):
         width, height = img.size
         print(f"📐 Current Resolution: {width}x{height}")
         
-        if width < 1024 or height < 1280:
+        if width < 1024 or height < 1024:
             new_width = 1024
-            new_height = 1280
+            new_height = 1024
             print(f"📐 Resizing: {width}x{height} → {new_width}x{new_height}")
             img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
         
-        # 2. Sharpness Enhance (हल्का सुधार ताकि प्राकृतिक त्वचा बनी रहे)
+        # शार्पनेस को पूरी तरह से प्राकृतिक रखा गया है ताकि चेहरे के पिक्सल्स न बिगड़ें
         enhancer = ImageEnhance.Sharpness(img)
-        img = enhancer.enhance(1.05)  
+        img = enhancer.enhance(1.02)  
         
-        # 3. Contrast Enhance
+        # कॉन्ट्रास्ट को भी बहुत हल्का रखा गया है
         enhancer = ImageEnhance.Contrast(img)
         img = enhancer.enhance(1.02)  
         
-        # 4. High Quality Save
+        # High Quality Save
         img.save(image_path, quality=95, optimize=True, format='JPEG')
         new_size = os.path.getsize(image_path)
         print(f"✅ Enhanced! New Size: {new_size/1024:.1f} KB")
@@ -328,8 +345,8 @@ def post_to_facebook(image_path, caption):
     
     try:
         with open(image_path, 'rb') as img_file:
-            files = {'source': img_file}
-            response = requests.post(fb_url, data=payload, files=files, timeout=120)
+            files = {'source': img_file: 'image/jpeg'}
+            response = session.post(fb_url, data=payload, files=files, timeout=120)
         
         if response.status_code == 200:
             post_id = response.json().get('id')
@@ -360,7 +377,7 @@ def cleanup_files(*files):
 
 def main():
     print("\n" + "="*60)
-    print("🚀 INSTAGRAM STYLE AI BOT START (HUGGING FACE PREMIUM)")
+    print("🚀 INSTAGRAM STYLE AI BOT START (BYPASS & NETWORK FIXED)")
     print("="*60)
     
     start_time = time.time()
