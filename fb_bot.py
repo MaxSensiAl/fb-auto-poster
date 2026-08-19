@@ -29,54 +29,73 @@ if not PAGE_ID or not ACCESS_TOKEN:
     print("❌ ERROR: Facebook credentials missing!")
     sys.exit(1)
 
-# Configure Gemini if available
+# Configure Gemini if available (NEW VERSION FIX)
 if GEMINI_AVAILABLE and GEMINI_API_KEY:
     try:
+        # NEW: Use genai.configure with correct model
         genai.configure(api_key=GEMINI_API_KEY)
-        print("✅ Gemini AI configured successfully!")
+        # Test with correct model name
+        try:
+            model = genai.GenerativeModel('gemini-1.5-flash')  # Updated model name
+            print("✅ Gemini AI configured successfully!")
+        except:
+            model = genai.GenerativeModel('gemini-pro')  # Fallback
+            print("✅ Gemini AI configured (legacy model)!")
     except Exception as e:
         print(f"⚠️ Gemini configuration failed: {e}")
 
 # ============================================
-# PROMPTS (Indian Beauty Focused)
+# HIGH-QUALITY PROMPTS (Aapka Prompt Included)
 # ============================================
 PERFECT_FACE_PROMPTS = [
-    """A stunning medium-close up portrait of a beautiful Indian bride. She is wearing traditional red bridal wear with highly detailed gold embroidery. Sharp focus on her symmetrical face and expressive clear eyes. Wearing a delicate gold maang tikka and matching earrings. Soft glowing studio light, realistic skin texture with subtle film grain, shot on 85mm lens, f/1.4, flawless cinematic photo, 8k, photorealistic, highly detailed""",
+    # ⭐⭐⭐ Aapka Special High-Quality Prompt (TOP PRIORITY)
+    """A ultra-high-resolution, crystal-clear, detailed portrait of a young South Asian woman wearing a traditional pink and maroon headscarf and shawl. Maintaining the exact same face, features, expression, and clothing as the original photo. The background shows sharp, clear snow-capped mountains and a wooden fence under natural sunlight. High-definition photographic enhancement, rich textures, fine facial details, natural skin texture, crisp focus, cinematic lighting, 8k resolution, hyper-realistic, professional photography, national geographic quality""",
     
-    """Medium shot of a South Indian young woman wearing a rich green Kanjeevaram silk saree with a golden border, visible from waist up. She has jasmine flowers in her hair and wears traditional identical gold earrings. Traditional background with warm morning sunlight, natural skin pores, soft smile, highly detailed and realistic face, 8k, photorealistic""",
+    # Other prompts (with quality boost)
+    """A stunning medium-close up portrait of a beautiful Indian bride wearing traditional red bridal wear with highly detailed gold embroidery. Sharp focus on symmetrical face and expressive clear eyes. Wearing delicate gold maang tikka and matching earrings. Soft glowing studio light, realistic skin texture with subtle film grain, shot on 85mm lens, f/1.4, flawless cinematic photo, 8k, hyper-realistic, ultra-detailed, professional photography""",
     
-    """Close-up fashion portrait of a modern Indian influencer girl wearing an elegant pastel yellow dress, looking at the camera with a soft smile. Blurred city lights in the background during golden hour. Symmetrical delicate jewelry, realistic skin texture, beautiful eyes, captured on a professional DSLR, highly realistic, 8k, photorealistic""",
+    """Medium shot of a South Indian young woman wearing a rich green Kanjeevaram silk saree with golden border, visible from waist up. Jasmine flowers in hair, traditional identical gold earrings. Traditional background with warm morning sunlight, natural skin pores, soft smile, highly detailed realistic face, 8k, photorealistic, ultra-high-quality, professional DSLR shot""",
     
-    """Medium portrait shot of a beautiful Rajasthani princess visible from waist up. She is wearing a vibrant colorful traditional outfit with intricate silver jewelry. Symmetrical identical silver earrings, flawless facial features, natural lighting, shot on 35mm film, analog photo style, highly detailed, 8k""",
-    
-    """Close-up scenic portrait of a young Kashmiri woman wearing a traditional dark pheran with colorful embroidery. Beautiful rosy cheeks, detailed realistic eyes, snow-covered Gulmarg landscape blurred in the background. Natural soft daylight, highly realistic and authentic face texture, 8k, photorealistic""",
-    
-    """Medium shot of a Bengali woman in a classic white saree with a red border, visible from the chest up. She is wearing traditional identical gold bangles and earrings, smiling gracefully. Durga Puja pandal background with warm festive lights, sharp focus on her clear and flawless face, 8k, photorealistic"""
+    """Close-up fashion portrait of a modern Indian influencer girl wearing elegant pastel yellow dress, looking at camera with soft smile. Blurred city lights in background during golden hour. Symmetrical delicate jewelry, realistic skin texture, beautiful eyes, captured on professional DSLR, highly realistic, 8k, photorealistic, crystal clear, ultra-detailed""",
 ]
 
 # ============================================
-# 🎨 IMAGE GENERATION (Multiple Methods)
+# 🎨 HIGH-QUALITY IMAGE GENERATION (FIXED)
 # ============================================
 
-def generate_flux_image(prompt_text, filename="temp_flux.jpg"):
-    """Method 1: Pollinations FLUX (No API Key)"""
-    print("🎨 Method 1: Pollinations FLUX...")
+def generate_flux_image_high_quality(prompt_text, filename="temp_flux.jpg"):
+    """Method 1: Pollinations FLUX - HIGH QUALITY"""
+    print("🎨 Method 1: Pollinations FLUX (High Quality Mode)...")
     
-    encoded_prompt = urllib.parse.quote(prompt_text.strip())
+    # Quality booster - add to prompt
+    quality_prompt = f"{prompt_text}, ultra-high-resolution, 8k, photorealistic, crystal clear, professional photography, national geographic quality, hyper-detailed, sharp focus"
+    
+    encoded_prompt = urllib.parse.quote(quality_prompt.strip())
+    
+    # 🔥 CRITICAL FIX: Use maximum resolution
     flux_url = (
         f"https://image.pollinations.ai/prompt/{encoded_prompt}"
-        f"?width=2048&height=2560"
-        f"&model=flux"
+        f"?width=4096&height=5120"  # 🔥 Maximum resolution (4k)
+        f"&model=flux-pro"          # 🔥 Use pro model for better quality
         f"&nologo=true"
         f"&seed={random.randint(1, 9999999)}"
+        f"&quality=high"            # 🔥 Quality parameter
+        f"&enhance=true"            # 🔥 Auto-enhance
     )
     
     try:
-        response = requests.get(flux_url, timeout=90)
+        response = requests.get(flux_url, timeout=120)
         if response.status_code == 200:
+            # Check file size
+            content_size = len(response.content)
+            if content_size < 100000:  # Less than 100KB
+                print(f"⚠️ Image too small ({content_size} bytes), retrying...")
+                # Retry with different seed
+                return generate_flux_image_high_quality_retry(prompt_text, filename)
+            
             with open(filename, 'wb') as f:
                 f.write(response.content)
-            print(f"✅ FLUX Success! Size: {len(response.content)} bytes")
+            print(f"✅ FLUX Success! Size: {content_size} bytes ({content_size/1024:.1f} KB)")
             return filename
         else:
             print(f"❌ FLUX failed: {response.status_code}")
@@ -84,368 +103,238 @@ def generate_flux_image(prompt_text, filename="temp_flux.jpg"):
         print(f"❌ FLUX error: {e}")
     return None
 
-def generate_hf_image(prompt_text, filename="temp_hf.jpg"):
-    """Method 2: Hugging Face SDXL (Requires HF_TOKEN)"""
+def generate_flux_image_high_quality_retry(prompt_text, filename="temp_flux.jpg"):
+    """Retry with different parameters"""
+    print("🔄 Retrying FLUX with different settings...")
+    
+    quality_prompt = f"{prompt_text}, 8k, photorealistic, ultra-detailed, professional photography, crystal clear"
+    encoded_prompt = urllib.parse.quote(quality_prompt.strip())
+    
+    # Try with 2048px but higher quality settings
+    flux_url = (
+        f"https://image.pollinations.ai/prompt/{encoded_prompt}"
+        f"?width=2048&height=2560"
+        f"&model=flux"              # Standard model
+        f"&nologo=true"
+        f"&seed={random.randint(1, 9999999)}"
+        f"&quality=high"
+        f"&enhance=true"
+    )
+    
+    try:
+        response = requests.get(flux_url, timeout=90)
+        if response.status_code == 200:
+            content_size = len(response.content)
+            with open(filename, 'wb') as f:
+                f.write(response.content)
+            print(f"✅ FLUX Retry Success! Size: {content_size} bytes ({content_size/1024:.1f} KB)")
+            return filename
+        else:
+            print(f"❌ FLUX retry failed: {response.status_code}")
+    except Exception as e:
+        print(f"❌ FLUX retry error: {e}")
+    return None
+
+def generate_hf_image_high_quality(prompt_text, filename="temp_hf.jpg"):
+    """Method 2: Hugging Face SDXL (Better Quality)"""
     if not HF_TOKEN:
         print("⚠️ HF_TOKEN not found, skipping...")
         return None
     
-    print("🎨 Method 2: Hugging Face SDXL...")
+    print("🎨 Method 2: Hugging Face SDXL (High Quality)...")
     
     API_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0"
     headers = {"Authorization": f"Bearer {HF_TOKEN}"}
     
-    # Better prompt for HF
-    enhanced_prompt = f"{prompt_text}, high quality, 8k, photorealistic, detailed face, professional photography"
+    # 🔥 Enhanced prompt for better quality
+    enhanced_prompt = f"{prompt_text}, ultra-high-resolution, 8k, photorealistic, crystal clear, professional photography, national geographic quality, hyper-detailed, sharp focus, cinematic lighting, rich textures, natural skin, flawless facial features"
     
     payload = {
         "inputs": enhanced_prompt,
         "parameters": {
-            "negative_prompt": "ugly, deformed, blurry, low quality, bad anatomy, distorted face, extra limbs, cartoon, drawing, painting",
-            "num_inference_steps": 30,
+            "negative_prompt": "ugly, deformed, blurry, low quality, bad anatomy, distorted face, extra limbs, cartoon, drawing, painting, watercolor, lowres, bad eyes, bad hands, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, missing fingers, extra digit, fewer digits, bad feet",
+            "num_inference_steps": 50,  # 🔥 More steps = better quality
             "guidance_scale": 7.5,
             "width": 1024,
-            "height": 1280
+            "height": 1280,
+            "scheduler": "DPMSolverMultistep",  # Better scheduler
+            "seed": random.randint(1, 9999999)
         }
     }
     
     try:
         response = requests.post(API_URL, headers=headers, json=payload, timeout=120)
         if response.status_code == 200:
-            with open(filename, 'wb') as f:
-                f.write(response.content)
-            print(f"✅ HF Success! Size: {len(response.content)} bytes")
-            return filename
+            content_size = len(response.content)
+            if content_size > 100000:  # At least 100KB
+                with open(filename, 'wb') as f:
+                    f.write(response.content)
+                print(f"✅ HF Success! Size: {content_size} bytes ({content_size/1024:.1f} KB)")
+                return filename
+            else:
+                print(f"⚠️ HF image too small ({content_size} bytes)")
         else:
-            print(f"❌ HF failed: {response.status_code} - {response.text[:200]}")
+            print(f"❌ HF failed: {response.status_code}")
     except Exception as e:
         print(f"❌ HF error: {e}")
     return None
 
-def generate_placeholder_image(filename="temp_placeholder.jpg"):
-    """Method 3: Generate placeholder if everything fails"""
-    print("🎨 Creating placeholder image...")
+def generate_ultimate_image_high_quality(prompt):
+    """Master: Try all methods for HIGH QUALITY"""
     
+    print("🖼️ Starting HIGH-QUALITY image generation...")
+    
+    # Try 1: Pollinations FLUX (High Quality)
+    flux_result = generate_flux_image_high_quality(prompt)
+    if flux_result and os.path.exists(flux_result) and os.path.getsize(flux_result) > 100000:
+        return flux_result
+    
+    # Try 2: Hugging Face SDXL (if token available)
+    if HF_TOKEN:
+        hf_result = generate_hf_image_high_quality(prompt)
+        if hf_result and os.path.exists(hf_result) and os.path.getsize(hf_result) > 100000:
+            return hf_result
+    
+    # Try 3: Standard FLUX (fallback)
+    print("🔄 Trying standard FLUX (fallback)...")
+    flux_standard = generate_flux_image_high_quality_retry(prompt)
+    if flux_standard:
+        return flux_standard
+    
+    # Final: Placeholder (will work)
+    print("⚠️ Creating high-quality placeholder...")
+    return generate_placeholder_high_quality()
+
+def generate_placeholder_high_quality(filename="temp_placeholder.jpg"):
+    """Generate a high-quality placeholder"""
     try:
         from PIL import Image, ImageDraw, ImageFont
         
-        # Create a gradient background
-        img = Image.new('RGB', (1080, 1350), color=(255, 200, 230))
+        # Create large high-resolution placeholder
+        img = Image.new('RGB', (2048, 2560), color=(255, 200, 230))
         draw = ImageDraw.Draw(img)
         
-        # Draw some decorative elements
-        for i in range(0, 1080, 100):
-            draw.line([(i, 0), (i, 1350)], fill=(255, 180, 210), width=2)
-        for i in range(0, 1350, 100):
-            draw.line([(0, i), (1080, i)], fill=(255, 180, 210), width=2)
+        # Quality details
+        for i in range(0, 2048, 50):
+            draw.line([(i, 0), (i, 2560)], fill=(255, 180, 210), width=3)
+        for i in range(0, 2560, 50):
+            draw.line([(0, i), (2048, i)], fill=(255, 180, 210), width=3)
         
-        # Add text
+        # High quality text
         try:
-            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 60)
+            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 120)
+            font2 = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 60)
         except:
             font = ImageFont.load_default()
+            font2 = ImageFont.load_default()
         
         text = "✨ AI Beauty ✨"
         text_bbox = draw.textbbox((0, 0), text, font=font)
         text_width = text_bbox[2] - text_bbox[0]
         text_height = text_bbox[3] - text_bbox[1]
-        x = (1080 - text_width) // 2
-        y = (1350 - text_height) // 2 - 50
+        x = (2048 - text_width) // 2
+        y = (2560 - text_height) // 2 - 80
         draw.text((x, y), text, fill=(200, 50, 100), font=font)
         
-        text2 = "Generated by AI Bot"
-        try:
-            font2 = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 30)
-        except:
-            font2 = ImageFont.load_default()
+        text2 = "Generated by AI Bot - High Quality"
         text2_bbox = draw.textbbox((0, 0), text2, font=font2)
         text2_width = text2_bbox[2] - text2_bbox[0]
-        x2 = (1080 - text2_width) // 2
-        y2 = y + text_height + 30
+        x2 = (2048 - text2_width) // 2
+        y2 = y + text_height + 50
         draw.text((x2, y2), text2, fill=(150, 50, 80), font=font2)
         
-        img.save(filename)
-        print(f"✅ Placeholder created!")
+        img.save(filename, quality=95, optimize=False)  # High quality save
+        print(f"✅ High-quality placeholder created!")
         return filename
     except Exception as e:
         print(f"❌ Placeholder creation failed: {e}")
-        # Final fallback - create empty file
         with open(filename, 'wb') as f:
-            f.write(b"PLACEHOLDER_IMAGE")
+            f.write(b"HIGH_QUALITY_PLACEHOLDER_IMAGE")
         return filename
 
-def generate_ultimate_image(prompt):
-    """Master function: Try all methods until success"""
-    
-    print("🖼️ Starting image generation...")
-    
-    # Try HF first (best quality)
-    hf_result = generate_hf_image(prompt)
-    if hf_result and os.path.exists(hf_result) and os.path.getsize(hf_result) > 1000:
-        return hf_result
-    
-    # Try FLUX second (good quality)
-    flux_result = generate_flux_image(prompt)
-    if flux_result and os.path.exists(flux_result) and os.path.getsize(flux_result) > 1000:
-        return flux_result
-    
-    # Final fallback - placeholder
-    print("⚠️ All API methods failed! Creating placeholder...")
-    return generate_placeholder_image()
-
 # ============================================
-# 📝 CAPTION GENERATION (Multiple Methods)
+# 📝 GEMINI CAPTION FIX (NEW MODEL)
 # ============================================
 
-def generate_static_caption():
-    """Method 1: Static captions"""
-    hour = datetime.now().hour
-    if 6 <= hour < 12:
-        time_text = "🌅 Good Morning! Today's trending beauty"
-    elif 12 <= hour < 17:
-        time_text = "☀️ Afternoon glow" 
-    elif 17 <= hour < 21:
-        time_text = "🌆 Evening elegance"
-    else:
-        time_text = "🌙 Night queen"
-    
-    captions = [
-        f"""{time_text}
-
-🔥 AI Generated Perfect Indian Bride Look!
-
-क्या आपको लगता है ये Real है या AI? 🤔
-👇 3 Second mein comment karo:
-1️⃣ Kitne number doge? (1-10)
-2️⃣ Sabse best kya hai - Dress, Jewelry, ya Face?
-
-💡 50+ Comments = Next Post Aaj Raat hi!
-
-#AIBride #IndianWedding #AIArt #TrendingReels #ViralPost #FYP #ExplorePage #AIFashion #BridalWear #AICommunity #DigitalArt #AIInfluencer #AIModel #FashionAI #IndianFashion #BollywoodStyle #AIArtCommunity #ViralReels #InstagramReels #Explore #TrendingNow #AIContent #AIGirl #ArtificialIntelligence #TechFashion #FutureOfFashion #AIforIndia #IndianAI #DesiBride #ShaadiGoals""",
-
-        f"""{time_text}
-
-💃 AI ने बनाया ये Stunning Look! 
-
-क्या आप ये outfit पहनेंगी? 👗
-👇 Comment mein batao:
-❤️ Haan - agar pasand aaya
-💔 Na - agar nahi pasand
-
-🎯 100+ Reactions = Next Look और भी Better!
-
-#AIFashion #TrendingStyle #IndianBeauty #AICreation #ViralFashion #ExplorePage #FYP #StyleInspo #OOTD #FashionGoals #AIModel #DigitalFashion #AIArtwork #ModernBride #IndianWear #FusionFashion #AIArtist #VirtualFashion #TechStyle #InstaFashion #DailyFashion #Fashionista #AICouture #VirtualInfluencer #IndianFashionBlogger #AIForFashion""",
-
-        f"""{time_text}
-
-✨ AI Generated - Perfect Indian Beauty!
-
-💫 Vote karo - Best feature kya hai?
-👇 Comment me likho:
-👁️ Eyes
-💎 Jewelry 
-👗 Dress
-💄 Makeup
-
-📢 200+ Votes = Special Announcement!
-
-#AIGirl #IndianBeauty #AIFashion #ViralPost #Explore #TrendingNow #AICommunity #DigitalArt #AIArt #FashionGram #BridalFashion #IndianBride #AIContent #TechGirl #FutureFashion #AIModeling #VirtualInfluencer #AIReels #InstaReels #FYPシ #ViralReels #AICreations #BeautyAI #IndianTraditions #ModernFashion""",
-        
-        f"""{time_text}
-
-🌟 AI Generated - Trending Indian Look!
-
-🔥 पहली बार देखकर क्या लगा?
-👇 Comment me batao:
-😱 - Amazing! 
-😍 - Beautiful!
-🤯 - Unbelievable!
-
-🎬 Next Post - आपके Favourite Style पर!
-
-#AITrends #IndianFashion #AIModel #ViralContent #ExplorePage #FYP #TrendingReels #AIFashionista #DesiGirl #FashionInspo #AICreation #DigitalArt #AIBeauty #IndianStyle #TraditionalWear #ModernIndian #AIWorld #TechArt #FashionDaily #InstaTrending #ViralNow #AICommunity #ArtOfAI #IndianGirl #FusionWear""",
-
-        f"""{time_text}
-
-✨ AI Magic - Creating Perfect Indian Beauty!
-
-🎯 Quick Poll:
-1️⃣ Bridal Look - ❤️
-2️⃣ Casual Look - 💙
-3️⃣ Traditional Look - 💚
-4️⃣ Modern Look - 💛
-
-👇 Reaction mein vote karo!
-
-#AIPortrait #IndianBeauty #AIArtwork #ViralPost #FYP #Explore #TrendingStyle #AICreation #DigitalInfluencer #FashionDaily #IndianFashionBlogger #BridalInspo #AIForGood #TechFashion #ModernArt #AIArtist #VirtualModel #InstagramViral #ReelsViral #AIContentCreator #FutureOfAI #BeautyTech #IndianAesthetic #DesiBeauty #FusionStyle"""
-    ]
-    return random.choice(captions)
-
-def generate_gemini_caption(prompt_context):
-    """Method 2: AI-generated caption using Gemini"""
+def generate_gemini_caption_fixed(prompt_context):
+    """Method: Gemini AI caption with correct model"""
     if not GEMINI_AVAILABLE or not GEMINI_API_KEY:
         return generate_static_caption()
     
     try:
-        print("🤖 Generating Gemini caption...")
-        model = genai.GenerativeModel('gemini-pro')
+        print("🤖 Generating Gemini caption (NEW model)...")
         
-        prompt = f"""Create a viral Instagram caption for an AI-generated Indian beauty portrait.
+        # Try new model first
+        try:
+            model = genai.GenerativeModel('gemini-1.5-flash')
+        except:
+            # Fallback to old model
+            model = genai.GenerativeModel('gemini-pro')
+        
+        prompt = f"""Create a viral Instagram caption for an AI-generated high-quality Indian beauty portrait.
 
-Context about the image: {prompt_context[:200]}
+Image context: {prompt_context[:200]}
 
 Requirements:
-1. Write in Hinglish (mix of Hindi and English)
-2. Start with a catchy emoji hook
-3. Include 2-3 interactive questions 
-4. Ask for comments in Hindi
-5. Add 25-30 trending hashtags (mix of English and Hindi)
-6. Keep it under 2200 characters
-7. Make it sound like a popular Indian influencer
-
-Style: Trendy, engaging, desi vibe, encourages interaction
-Tone: Excited, friendly, conversational
+1. Write in Hinglish (Hindi + English mix)
+2. Start with catchy emoji hook
+3. Include 2-3 interactive questions in Hindi
+4. Add 25-30 trending hashtags
+5. Keep under 2200 characters
+6. Make it engaging and desi vibe
 
 Caption:"""
         
         response = model.generate_content(prompt)
         if response and response.text:
             print("✅ Gemini caption generated!")
-            return response.text[:2200]  # Instagram limit
+            return response.text[:2200]
         
     except Exception as e:
         print(f"⚠️ Gemini caption failed: {e}")
     
     return generate_static_caption()
 
-def generate_ultimate_caption(prompt_context):
-    """Master function: Try AI first, fallback to static"""
-    
-    # Try Gemini first (most engaging)
-    gemini_caption = generate_gemini_caption(prompt_context)
-    if gemini_caption and len(gemini_caption) > 50:
-        return gemini_caption
-    
-    # Fallback to static
-    print("⚠️ Using static caption fallback...")
-    return generate_static_caption()
-
 # ============================================
-# 📤 FACEBOOK POSTING
+# 🎯 MAIN BOT - HIGH QUALITY VERSION
 # ============================================
 
-def post_local_file_to_facebook(image_path, caption):
-    """Upload image to Facebook Page"""
-    print("📤 Uploading to Facebook...")
-    
-    fb_url = f"https://graph.facebook.com/{PAGE_ID}/photos"
-    
-    payload = {
-        'caption': caption,
-        'access_token': ACCESS_TOKEN,
-        'published': 'true'
-    }
-    
-    try:
-        # Check if file exists and is valid
-        if not os.path.exists(image_path) or os.path.getsize(image_path) < 100:
-            print("❌ Image file invalid!")
-            return None
-        
-        with open(image_path, 'rb') as img_file:
-            files = {'source': img_file}
-            response = requests.post(fb_url, data=payload, files=files, timeout=120)
-        
-        if response.status_code == 200:
-            post_id = response.json().get('id')
-            print(f"✅ POST SUCCESSFUL! Post ID: {post_id}")
-            return post_id
-        else:
-            print(f"❌ Facebook Upload Failed: {response.text[:500]}")
-            
-            # Try alternative method
-            print("🔄 Trying alternative upload method...")
-            return post_to_facebook_alt(image_path, caption)
-            
-    except Exception as e:
-        print(f"⚠️ Error uploading to Facebook: {e}")
-        return None
-
-def post_to_facebook_alt(image_path, caption):
-    """Alternative method: Upload as URL"""
-    try:
-        # Read image and encode as base64
-        with open(image_path, 'rb') as f:
-            img_data = base64.b64encode(f.read()).decode('utf-8')
-        
-        fb_url = f"https://graph.facebook.com/{PAGE_ID}/photos"
-        payload = {
-            'caption': caption,
-            'access_token': ACCESS_TOKEN,
-            'published': 'true',
-            'source': img_data
-        }
-        
-        response = requests.post(fb_url, data=payload, timeout=120)
-        if response.status_code == 200:
-            post_id = response.json().get('id')
-            print(f"✅ ALT POST SUCCESSFUL! Post ID: {post_id}")
-            return post_id
-        else:
-            print(f"❌ ALT Upload Failed: {response.text[:200]}")
-    except Exception as e:
-        print(f"❌ ALT upload error: {e}")
-    return None
-
-# ============================================
-# 🧹 CLEANUP FUNCTION
-# ============================================
-
-def cleanup_files(*files):
-    """Delete temporary files"""
-    for file in files:
-        if file and os.path.exists(file):
-            try:
-                os.remove(file)
-                print(f"🧹 Removed: {file}")
-            except:
-                pass
-
-# ============================================
-# 🎯 MAIN BOT WORKFLOW
-# ============================================
-
-def run_bot():
-    """Complete workflow - NEVER FAILS"""
+def run_bot_high_quality():
+    """Complete workflow - HIGH QUALITY version"""
     
     print("\n" + "="*60)
-    print("🚀 STARTING ULTIMATE AI BOT")
+    print("🚀 STARTING HIGH-QUALITY AI BOT")
     print("="*60)
     
     start_time = time.time()
     
     try:
-        # Step 1: Select random prompt
-        selected_prompt = random.choice(PERFECT_FACE_PROMPTS)
-        print(f"📝 Selected prompt: {selected_prompt[:100]}...")
+        # Step 1: Select YOUR prompt (priority)
+        selected_prompt = PERFECT_FACE_PROMPTS[0]  # 🔥 Your high-quality prompt
+        print(f"📝 Using your high-quality prompt...")
         
-        # Step 2: Generate image (multi-method)
-        print("\n🖼️ IMAGE GENERATION PHASE")
-        image_path = generate_ultimate_image(selected_prompt)
+        # Step 2: Generate HIGH QUALITY image
+        print("\n🖼️ HIGH-QUALITY IMAGE GENERATION")
+        image_path = generate_ultimate_image_high_quality(selected_prompt)
         
         if not image_path or not os.path.exists(image_path):
             print("❌ CRITICAL: No image generated!")
             return False
         
-        print(f"✅ Image ready: {image_path} ({os.path.getsize(image_path)} bytes)")
+        file_size = os.path.getsize(image_path)
+        print(f"✅ Image ready: {image_path} ({file_size/1024:.1f} KB)")
         
-        # Step 3: Generate caption (AI + fallback)
-        print("\n📝 CAPTION GENERATION PHASE")
-        caption = generate_ultimate_caption(selected_prompt)
+        # Check quality
+        if file_size < 100000:
+            print(f"⚠️ WARNING: Image quality might be low ({file_size/1024:.1f} KB)")
+        
+        # Step 3: Generate caption
+        print("\n📝 CAPTION GENERATION")
+        caption = generate_gemini_caption_fixed(selected_prompt)
         print(f"✅ Caption generated ({len(caption)} chars)")
         
-        # Step 4: Post to Facebook (with retry)
-        print("\n📤 POSTING PHASE")
+        # Step 4: Post to Facebook
+        print("\n📤 POSTING TO FACEBOOK")
         post_id = post_local_file_to_facebook(image_path, caption)
         
         # Step 5: Cleanup
@@ -455,14 +344,14 @@ def run_bot():
         
         if post_id:
             print("\n" + "="*60)
-            print("🎉 WORKFLOW COMPLETED SUCCESSFULLY!")
+            print("🎉 HIGH-QUALITY POST SUCCESSFUL!")
             print(f"⏱️ Time: {elapsed:.2f} seconds")
             print(f"📱 Post ID: {post_id}")
             print("="*60)
             return True
         else:
             print("\n" + "="*60)
-            print("❌ WORKFLOW FAILED AT POSTING STAGE")
+            print("❌ POST FAILED")
             print("="*60)
             return False
             
@@ -477,8 +366,5 @@ def run_bot():
 # ============================================
 
 if __name__ == "__main__":
-    # Run the bot
-    success = run_bot()
-    
-    # Exit with proper code
+    success = run_bot_high_quality()
     sys.exit(0 if success else 1)
