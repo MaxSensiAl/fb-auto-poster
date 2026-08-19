@@ -7,6 +7,13 @@ import urllib.parse
 from datetime import datetime
 from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
+
+# ============================================
+# 🌐 GITHUB Actions के लिए IPv4-Force DNS पैच
+# ============================================
+import urllib3.util.connection as urllib3_connection
+urllib3_connection.HAS_IPV6 = False
+
 from playwright.sync_api import sync_playwright
 
 # ============================================
@@ -21,12 +28,16 @@ GEMINI_API = os.environ.get("GEMINI_API")
 HF_TOKEN = os.environ.get("HF_TOKEN")
 
 # Check Credentials
+if not IG_USERNAME or not IG_PASSWORD:
+    print("❌ Instagram Credentials नहीं मिले! लॉगिन सिस्टम के लिए यह आवश्यक है।")
+    sys.exit(1)
+
 if not FB_PAGE_ID or not FB_ACCESS_TOKEN:
     print("❌ Facebook Credentials नहीं मिले!")
     sys.exit(1)
 
-print(f"✅ Target: @{TARGET_PROFILE}")
-print(f"✅ Facebook Page: {FB_PAGE_ID[:3]}***")
+print(f"✅ Instagram Target: @{TARGET_PROFILE}")
+print(f"✅ Instagram User: {IG_USERNAME[:3]}***")
 
 # ============================================
 # 🌐 मजबूत नेटवर्क सेशन सेटअप
@@ -43,121 +54,109 @@ session.mount("https://", adapter)
 session.mount("http://", adapter)
 
 # ============================================
-# 🎨 FACE-FOCUSED PROMPTS (बेहतर चेहरे के लिए)
+# 🎨 MULTIPLE PROMPTS (बैकअप के लिए)
 # ============================================
 
 PROMPTS = [
-    # 1. Traditional Indian Bride - Face Focus
-    """
-    Close-up portrait of a gorgeous Indian bride, 
-    symmetrical facial features, highly detailed realistic eyes, 
-    perfect nose and lips, natural skin texture with visible pores,
-    traditional red bridal lehenga visible in frame,
-    soft golden hour lighting, dreamy bokeh background,
-    8k resolution, photorealistic, professional photography,
-    Canon EOS R5, 85mm lens, f/1.4, sharp focus on face.
-    """,
-    
-    # 2. Modern Bollywood Style - Face Focus
-    """
-    Close-up portrait of a stunning Bollywood actress,
-    symmetrical face, detailed expressive eyes, natural skin texture,
-    modern fusion wear, professional studio lighting,
-    soft shadows, high fashion editorial style,
-    Sony A7R IV, 50mm lens, f/1.8, sharp focus on face.
-    """,
-    
-    # 3. South Indian Beauty - Face Focus
-    """
-    Close-up portrait of a South Indian woman,
-    symmetrical facial features, clear realistic eyes, warm skin tone,
-    silk saree with gold border visible, temple jewelry,
-    natural sunlight, sharp focus on face,
-    Nikon Z9, 85mm lens, vibrant colors.
-    """,
-    
-    # 4. Royal Rajasthani Style - Face Focus
-    """
-    Close-up portrait of a royal Rajasthani woman,
-    symmetrical face, detailed expressive eyes, natural skin,
-    traditional jewelry, desert palace background,
-    golden hour lighting, sharp focus on face,
-    Leica M11, 50mm Summilux.
-    """,
-    
-    # 5. Festival Special - Face Focus
-    """
-    Close-up portrait of a happy Indian woman celebrating,
-    symmetrical facial features, joyful expression, detailed eyes,
-    traditional lehenga, diya background,
-    festive warm lighting, sharp focus on face,
-    Canon EOS R3, 24-70mm lens.
-    """,
-    
-    # 6. Wedding Guest - Face Focus
-    """
-    Close-up portrait of a beautiful woman in wedding guest attire,
-    symmetrical face, natural skin texture, detailed eyes,
-    elegant saree or lehenga, soft romantic lighting,
-    dreamy background, sharp focus on face.
-    """,
-    
-    # 7. Kashmiri Beauty - Face Focus
-    """
-    Close-up portrait of a Kashmiri woman,
-    symmetrical facial features, clear realistic eyes, fair skin,
-    traditional pheran, snow-capped mountains background,
-    natural winter lighting, sharp focus on face,
-    Nikon D850, 70-200mm lens.
-    """,
-    
-    # 8. Ultra Realistic Face - Special
-    """
-    Ultra realistic close-up portrait of an Indian woman,
-    hyper-detailed symmetrical facial features, 
-    highly detailed realistic eyes with catchlights,
-    natural skin texture, visible pores, perfect lighting,
-    professional photography, 8k resolution,
-    sharp focus on face, cinematic, photorealistic.
-    """
+    "traditional red bridal lehenga Indian bride, arms down, highly detailed realistic face",
+    "Bollywood actress in modern designer fusion wear, arms relaxed at sides",
+    "South Indian woman in rich silk kanjivaram saree, traditional jewelry, realistic face",
+    "royal Rajasthani woman in lehenga, standing gracefully",
+    "modern Indian woman in elegant pastel saree, simple standing pose",
+    "Indian woman celebrating festival in mirror-work lehenga",
+    "beautiful Indian woman in wedding guest attire",
+    "Kashmiri woman standing in traditional embroidered pheran"
 ]
 
 def create_default_prompt():
-    """Face-focused prompt with better quality"""
     return random.choice(PROMPTS)
 
 # ============================================
-# 📸 1. INSTAGRAM STYLE (Skip Login)
+# 🔐 1. PLAYWRIGHT INSTAGRAM LOGIN & SCRAPE SYSTEM
 # ============================================
 
-def learn_style_from_instagram():
-    print(f"📸 Instagram Login Skip - Using Manual Style Prompts")
-    print(f"🎯 Target Profile: @{TARGET_PROFILE}")
-    selected_prompt = random.choice(PROMPTS)
-    print(f"✅ Selected Prompt: {selected_prompt[:100]}...")
-    return selected_prompt
+def login_and_get_instagram_style(page):
+    """
+    इंस्टाग्राम पर लॉगिन करके टारगेट प्रोफाइल का नवीनतम पोस्ट चेक करना और प्रॉम्प्ट बनाना
+    """
+    print("\n🔐 [लॉगिन सिस्टम] इंस्टाग्राम वेब पर लॉगिन कर रहा हूँ...")
+    page.goto("https://www.instagram.com/accounts/login/")
+    page.wait_for_timeout(4000)
+    
+    try:
+        # क्रेडेंशियल्स भरें
+        page.fill('input[name="username"]', IG_USERNAME)
+        page.fill('input[name="password"]', IG_PASSWORD)
+        page.wait_for_timeout(1000)
+        
+        # लॉगिन बटन दबाएं
+        page.click('button[type="submit"]')
+        print("⏳ लॉगिन होने की प्रतीक्षा कर रहा हूँ (8 सेकंड)...")
+        page.wait_for_timeout(8000)
+        
+        # 'Not Now' पॉपअप्स को संभालना (यदि दिखाई दें)
+        try:
+            if page.locator("text=Not Now").is_visible():
+                page.click("text=Not Now")
+                page.wait_for_timeout(2000)
+            if page.locator("text=Not now").is_visible():
+                page.click("text=Not now")
+                page.wait_for_timeout(2000)
+        except:
+            pass
+            
+        print("✅ इंस्टाग्राम लॉगिन सफल!")
+        
+        # टारगेट प्रोफाइल पर जाएं
+        profile_url = f"https://www.instagram.com/{TARGET_PROFILE}/"
+        print(f"🎯 टारगेट प्रोफाइल पर जा रहा हूँ: {profile_url}")
+        page.goto(profile_url)
+        page.wait_for_timeout(5000)
+        
+        # नवीनतम पोस्ट पर क्लिक करें और उसका स्टाइल सीखें
+        try:
+            print("🔍 नवीनतम पोस्ट खोलकर स्टाइल/कैप्शन चेक कर रहा हूँ...")
+            # पहली फोटो पोस्ट का लिंक ढूंढें
+            first_post = page.locator('a[href^="/p/"]').first
+            first_post.click()
+            page.wait_for_timeout(4000)
+            
+            # कैप्शन टेक्स्ट निकालें
+            caption_element = page.locator('article span').first
+            caption_text = caption_element.inner_text()
+            print(f"📝 नवीनतम पोस्ट का लाइव कैप्शन मिला: {caption_text[:150]}...")
+            
+            # पोस्ट क्लोज करें
+            page.locator('svg[aria-label="Close"]').first.click()
+            page.wait_for_timeout(2000)
+            return caption_text
+            
+        except Exception as e:
+            print(f"⚠️ नवीनतम पोस्ट चेक करने में त्रुटि (बायपास): {e}")
+            
+    except Exception as e:
+        print(f"❌ लॉगिन या स्क्रैपिंग विफल: {e}")
+        
+    print("🔄 बैकअप के लिए लोकल डिफ़ॉल्ट प्रॉम्प्ट का उपयोग कर रहा हूँ...")
+    return random.choice(PROMPTS)
 
 # ============================================
-# 🎨 2. AI से PHOTO GENERATE करें (Face Focus)
+# 🎨 2. MULTI-ENGINE GENERATOR (HF Mirror, Hercai V3, Pollinations)
 # ============================================
 
 def generate_ai_image_hf(prompt_text, model_id="black-forest-labs/FLUX.1-schnell", filename="generated_photo.jpg"):
-    """
-    Hugging Face API का उपयोग करके प्रीमियम क्वालिटी फोटो जनरेट करें
-    """
     if not HF_TOKEN:
-        print("⚠️ HF_TOKEN नहीं मिला! बैकअप सर्वर का उपयोग कर रहा हूँ...")
         return None
         
-    print(f"🚀 Hugging Face मॉडल ({model_id}) से फोटो बना रहा हूँ...")
-    api_url = f"https://api-inference.huggingface.co/models/{model_id}"
+    print(f"🚀 Hugging Face Mirror ({model_id}) से कनेक्ट कर रहा हूँ...")
+    api_url = f"https://api-inference.hf-mirror.com/models/{model_id}"
     headers = {"Authorization": f"Bearer {HF_TOKEN}"}
     
     payload = {
         "inputs": prompt_text,
         "parameters": {
             "width": 1024,
-            "height": 1024  # ✅ Square - Face Distortion से बचाता है
+            "height": 1024
         }
     }
     
@@ -173,84 +172,79 @@ def generate_ai_image_hf(prompt_text, model_id="black-forest-labs/FLUX.1-schnell
         if response.status_code == 200 and len(response.content) > 10000:
             with open(filename, 'wb') as f:
                 f.write(response.content)
-            print("✅ Hugging Face से हाई-क्वालिटी फोटो डाउनलोड हो गई!")
-            enhance_face_quality(filename)
+            print("✅ Hugging Face Mirror से प्रीमियम फोटो सफलतापूर्वक डाउनलोड हो गई!")
             return filename
-        else:
-            print(f"❌ HF Model Error: {response.status_code}")
-            return None
     except Exception as e:
-        print(f"❌ HF Connection Error (Bypassed): {e}")
-        return None
+        print(f"❌ HF Mirror Error: {e}")
+    return None
+
+
+def generate_ai_hercai(prompt_text, filename="generated_photo.jpg"):
+    print("🚀 [नया टूल] Hercai V3 (Stable Diffusion XL) से लाइव फोटो बना रहा हूँ...")
+    url = "https://hercai.onrender.com/v3/hercai"
+    
+    payload = {
+        "prompt": prompt_text,
+        "model": "v3"  
+    }
+    
+    try:
+        response = session.post(url, json=payload, timeout=90)
+        if response.status_code == 200:
+            data = response.json()
+            img_url = data.get("reply")
+            
+            if img_url:
+                img_response = session.get(img_url, timeout=90)
+                if img_response.status_code == 200:
+                    with open(filename, 'wb') as f:
+                        f.write(img_response.content)
+                    print("✅ Hercai V3 से हाई-क्वालिटी फोटो डाउनलोड हो गई!")
+                    return filename
+    except Exception as e:
+        print(f"❌ Hercai V3 जनरेशन विफल: {e}")
+    return None
+
 
 def generate_ai_image(prompt_text, filename="generated_photo.jpg"):
-    """
-    Face-Focused AI Image Generation
-    """
-    print("🎨 AI से Face-Focused फोटो बना रहा हूँ...")
-    
-    # 1. पहला प्रयास: Flux.1-schnell (Hugging Face)
+    # 1. पहला प्रयास: Flux.1-schnell (Hugging Face Mirror)
     image_path = generate_ai_image_hf(prompt_text, "black-forest-labs/FLUX.1-schnell", filename)
     if image_path:
+        enhance_image_quality(image_path)
         return image_path
         
-    # 2. दूसरा प्रयास: Pollinations (Square Resolution)
-    print("🔄 Pollinations बैकअप पर स्विच कर रहा हूँ...")
+    # 2. दूसरा प्रयास: Hercai V3
+    image_path = generate_ai_hercai(prompt_text, filename)
+    if image_path:
+        enhance_image_quality(image_path)
+        return image_path
+
+    # 3. तीसरा प्रयास: पोलिनेशंस बैकअप
+    print("🔄 बैकअप पोलिनेशंस सर्वर पर स्विच कर रहा हूँ...")
     clean_prompt = prompt_text.strip().replace('\n', ' ').replace('  ', ' ')
     encoded_prompt = urllib.parse.quote(clean_prompt[:250])
     
     flux_url = (
         f"https://image.pollinations.ai/prompt/{encoded_prompt}"
-        f"?width=1024&height=1024"  # ✅ Square = No Face Distortion
-        f"&model=flux"
+        f"?width=1024&height=1024"  
+        f"&model=flux-realism"  
         f"&nologo=true"
         f"&seed={random.randint(1, 9999999)}"
         f"&quality=high"
-        f"&enhance=true"
+        f"&enhance=false"
     )
     
     try:
-        response = session.get(flux_url, timeout=180)
+        response = session.get(flux_url, timeout=120)
         if response.status_code == 200 and len(response.content) > 50000:
             with open(filename, 'wb') as f:
                 f.write(response.content)
-            print("✅ Pollinations से Face-Focused फोटो डाउनलोड हो गई!")
-            enhance_face_quality(filename)
+            print("✅ पोलिनेशंस बैकअप से फोटो डाउनलोड हो गई!")
+            enhance_image_quality(filename)
             return filename
     except Exception as e:
-        print(f"❌ Pollinations Error: {e}")
-    
-    # 3. तीसरा प्रयास: Simple Fallback
-    return generate_ai_image_face_fallback(filename)
-
-def generate_ai_image_face_fallback(filename="generated_photo.jpg"):
-    """
-    Face-Focused Fallback - अगर AI Fail हो तो
-    """
-    print("🔄 Face-Focused Fallback...")
-    
-    face_prompts = [
-        "Beautiful Indian woman portrait, close-up face, symmetrical features, high quality",
-        "Stunning Indian bride close-up, detailed eyes, natural skin, professional photography",
-        "Glamorous Bollywood actress portrait, sharp focus on face, studio lighting"
-    ]
-    
-    simple_prompt = random.choice(face_prompts)
-    encoded = urllib.parse.quote(simple_prompt)
-    
-    url = f"https://image.pollinations.ai/prompt/{encoded}?width=1024&height=1024&model=flux&nologo=true&quality=high&enhance=true"
-    
-    try:
-        response = session.get(url, timeout=180)
-        if response.status_code == 200 and len(response.content) > 50000:
-            with open(filename, 'wb') as f:
-                f.write(response.content)
-            print(f"✅ Face-Fallback Success!")
-            enhance_face_quality(filename)
-            return filename
-    except:
-        pass
-    
+        print(f"❌ बैकअप सर्वर विफल: {e}")
+        
     return create_placeholder_image(filename)
 
 def create_placeholder_image(filename="placeholder.jpg"):
@@ -265,13 +259,10 @@ def create_placeholder_image(filename="placeholder.jpg"):
         return filename
 
 # ============================================
-# 👤 FACE ENHANCEMENT
+# 🖼️ IMAGE ENHANCE
 # ============================================
 
-def enhance_face_quality(image_path):
-    """
-    Face-Focused Image Enhancement - Face को Sharp और Natural रखें
-    """
+def enhance_image_quality(image_path):
     try:
         from PIL import Image, ImageEnhance
         
@@ -279,40 +270,21 @@ def enhance_face_quality(image_path):
         width, height = img.size
         print(f"📐 Current Resolution: {width}x{height}")
         
-        # 1. Square Resolution Maintain करें (Face Distortion से बचने के लिए)
-        if width != height:
-            new_size = min(width, height)
-            print(f"📐 Cropping to Square: {new_size}x{new_size}")
-            left = (width - new_size) // 2
-            top = (height - new_size) // 2
-            img = img.crop((left, top, left + new_size, top + new_size))
+        if width < 1024 or height < 1024:
+            new_width = 1024
+            new_height = 1024
+            img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
         
-        # 2. Resolution बढ़ाएँ (Face Details के लिए)
-        if width < 1024:
-            new_size = 1024
-            print(f"📐 Upscaling to {new_size}x{new_size}")
-            img = img.resize((new_size, new_size), Image.Resampling.LANCZOS)
-        
-        # 3. ✅ Face के लिए हल्की Sharpness (Natural Look)
         enhancer = ImageEnhance.Sharpness(img)
-        img = enhancer.enhance(1.05)  # 5% - Natural
+        img = enhancer.enhance(1.01)  
         
-        # 4. ✅ हल्का Contrast
         enhancer = ImageEnhance.Contrast(img)
-        img = enhancer.enhance(1.02)  # 2% - Natural
+        img = enhancer.enhance(1.01)  
         
-        # 5. ✅ हल्की Color Enhancement
-        enhancer = ImageEnhance.Color(img)
-        img = enhancer.enhance(1.02)  # 2% - Natural
-        
-        # 6. High Quality Save
-        img.save(image_path, quality=98, optimize=True, format='JPEG')
-        new_size = os.path.getsize(image_path)
-        print(f"✅ Face Enhanced! Size: {new_size/1024:.1f} KB")
+        img.save(image_path, quality=95, optimize=True, format='JPEG')
         return True
-        
     except Exception as e:
-        print(f"⚠️ Face Enhancement Error: {e}")
+        print(f"⚠️ Enhancement Error: {e}")
         return False
 
 # ============================================
@@ -324,11 +296,9 @@ def check_image_quality(image_path):
     try:
         if not os.path.exists(image_path):
             return False
-        
         file_size = os.path.getsize(image_path)
         if file_size < 10000:
             return False
-        
         try:
             from PIL import Image
             img = Image.open(image_path)
@@ -398,14 +368,18 @@ def post_to_facebook(image_path, caption):
         'published': 'true'
     }
     
+    headers = {
+        'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8'
+    }
+    
     try:
         with open(image_path, 'rb') as img_file:
             files = {'source': img_file}
-            response = session.post(fb_url, data=payload, files=files, timeout=120)
+            response = session.post(fb_url, data=payload, files=files, headers=headers, timeout=120)
         
         if response.status_code == 200:
             post_id = response.json().get('id')
-            print(f"✅ पोस्ट हो गई! Post ID: {post_id}")
+            print(f"✅ फेसबुक पोस्ट हो गई! Post ID: {post_id}")
             return post_id
         else:
             print(f"❌ Facebook Error: {response.text[:500]}")
@@ -415,7 +389,55 @@ def post_to_facebook(image_path, caption):
         return None
 
 # ============================================
-# 🧹 5. CLEANUP
+# 📸 5. INSTAGRAM पर POST करें (PLAYWRIGHT WEB SYSTEM)
+# ============================================
+
+def post_to_instagram_playwright(page, image_path, caption):
+    """
+    प्लेराइट के ज़रिए सीधे ब्राउज़र से इंस्टाग्राम पर फोटो अपलोड करना
+    """
+    print("\n📤 [ऑटो-अपलोड] प्लेराइट ब्राउज़र के ज़रिए इंस्टाग्राम पर पोस्ट कर रहा हूँ...")
+    try:
+        # इंस्टाग्राम होम पर जाएं
+        page.goto("https://www.instagram.com/")
+        page.wait_for_timeout(5000)
+        
+        # 'New Post' (+) बटन पर क्लिक करें
+        create_btn = page.locator('svg[aria-label="New post"]').first
+        create_btn.click()
+        page.wait_for_timeout(3000)
+        
+        # हिडन फाइल इनपुट का पता लगाएं और इमेज अपलोड करें
+        file_input = page.locator('input[type="file"]')
+        file_input.set_input_files(image_path)
+        page.wait_for_timeout(5000)
+        
+        # 'Next' बटन पर क्लिक करें (Crop स्क्रीन)
+        page.click('div:has-text("Next")')
+        page.wait_for_timeout(3000)
+        
+        # 'Next' बटन पर क्लिक करें (Filter स्क्रीन)
+        page.click('div:has-text("Next")')
+        page.wait_for_timeout(3000)
+        
+        # कैप्शन लिखें
+        caption_textarea = page.locator('div[aria-label="Write a caption..."]')
+        caption_textarea.fill(caption)
+        page.wait_for_timeout(3000)
+        
+        # 'Share' बटन पर क्लिक करें (अंतिम पोस्टिंग)
+        page.click('div:has-text("Share")')
+        print("⏳ पोस्ट पब्लिश हो रही है, कृपया 12 सेकंड प्रतीक्षा करें...")
+        page.wait_for_timeout(12000)
+        
+        print("✅ इंस्टाग्राम पर प्लेराइट के ज़रिए पोस्ट सफलतापूर्वक साझा हो गई!")
+        return True
+    except Exception as e:
+        print(f"❌ प्लेराइट इंस्टाग्राम पोस्टिंग विफल: {e}")
+        return False
+
+# ============================================
+# 🧹 6. CLEANUP
 # ============================================
 
 def cleanup_files(*files):
@@ -427,46 +449,66 @@ def cleanup_files(*files):
                 pass
 
 # ============================================
-# 🚀 6. MAIN BOT
+# 🚀 7. MAIN BOT
 # ============================================
 
 def main():
     print("\n" + "="*60)
-    print("🚀 FACE-FOCUSED AI BOT START")
+    print("🚀 PLAYWRIGHT LOGIN & AUTO-POSTER BOT START")
     print("="*60)
     
     start_time = time.time()
     
     try:
-        # STEP 1: Style Select
-        style_prompt = learn_style_from_instagram()
-        
-        # STEP 2: AI से Face-Focused फोटो बनाएं
-        image_path = generate_ai_image(style_prompt, "face_focused_photo.jpg")
-        
-        if not image_path:
-            print("❌ फोटो नहीं बन पाई!")
-            return False
+        with sync_playwright() as p:
+            # हेडलेस क्रोमियम लॉन्च करें (GitHub Actions के लिए)
+            browser = p.chromium.launch(headless=True)
+            # मोबाइल आईफोन डिवाइस को एम्युलेट करें (ताकि लॉगिन ब्लॉक न हो)
+            context = browser.new_context(
+                user_agent="Mozilla/5.0 (iPhone; CPU iPhone OS 14_8 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Mobile/15E148 Safari/604.1",
+                viewport={"width": 375, "height": 812}
+            )
+            page = context.new_page()
             
-        # STEP 2.5: Quality Check
-        if not check_image_quality(image_path):
-            print("❌ Quality Check Fail!")
-            return False
-        
-        # STEP 3: कैप्शन बनाएं
-        caption = generate_caption()
-        
-        # STEP 4: Facebook पर पोस्ट करें
-        post_id = post_to_facebook(image_path, caption)
-        
-        # STEP 5: क्लीनअप
+            # STEP 1: इंस्टाग्राम लॉगिन और लाइव स्टाइल चेकिंग
+            style_prompt = login_and_get_instagram_style(page)
+            
+            # STEP 2: परफेक्ट फोटो लाइव जनरेट करें
+            image_path = generate_ai_image(style_prompt, "instagram_style_photo.jpg")
+            
+            if not image_path:
+                print("❌ फोटो जनरेट या डाउनलोड नहीं हो पाई!")
+                browser.close()
+                return False
+                
+            # STEP 2.5: Quality Check
+            if not check_image_quality(image_path):
+                print("❌ Quality Check Fail!")
+                browser.close()
+                return False
+            
+            # STEP 3: कैप्शन बनाएं
+            caption = generate_caption()
+            
+            # STEP 4: Facebook पर पोस्ट करें (Graph API)
+            fb_post_id = post_to_facebook(image_path, caption)
+            
+            # STEP 5: Instagram पर सीधे ब्राउज़र के ज़रिए पोस्ट करें (प्लेराइट)
+            ig_success = post_to_instagram_playwright(page, image_path, caption)
+            
+            browser.close()
+            
+        # STEP 6: क्लीनअप
         cleanup_files(image_path, "retry_photo.jpg", "placeholder_final.jpg")
         
         elapsed = time.time() - start_time
-        if post_id:
-            print(f"🎉 SUCCESS! पोस्ट आईडी: {post_id} (समय: {elapsed:.2f}s)")
-            return True
-        return False
+        print("\n" + "="*60)
+        print(f"🎉 SUCCESS! कार्य संपन्न हुआ (समय: {elapsed:.2f}s)")
+        print(f"📱 Facebook Post: {'✅ Success' if fb_post_id else '❌ Fail'}")
+        print(f"📸 Instagram Post: {'✅ Success' if ig_success else '❌ Fail'}")
+        print("="*60)
+        
+        return True if (fb_post_id or ig_success) else False
             
     except Exception as e:
         print(f"❌ CRITICAL ERROR: {e}")
