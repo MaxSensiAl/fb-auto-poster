@@ -19,121 +19,20 @@ GEMINI_API = os.environ.get("GEMINI_API")
 HF_TOKEN = os.environ.get("HF_TOKEN")
 
 # Check Credentials
-if not IG_USERNAME or not IG_PASSWORD:
-    print("❌ Instagram Credentials नहीं मिले!")
-    print("कृपया GitHub Secrets में IG_USERNAME और IG_PASSWORD सेट करें")
-    sys.exit(1)
-
 if not FB_PAGE_ID or not FB_ACCESS_TOKEN:
     print("❌ Facebook Credentials नहीं मिले!")
     sys.exit(1)
 
-print(f"✅ Instagram: {IG_USERNAME[:3]}***")
 print(f"✅ Target: @{TARGET_PROFILE}")
 print(f"✅ Facebook Page: {FB_PAGE_ID[:3]}***")
 
 # ============================================
-# 📸 1. INSTAGRAM से STYLE सीखें
+# 🎨 MULTIPLE PROMPTS (Variety के लिए)
 # ============================================
 
-def learn_style_from_instagram():
+PROMPTS = [
+    # 1. Traditional Indian Bride
     """
-    Instagram प्रोफाइल से पोस्ट लोड करें और स्टाइल एनालिसिस करें
-    """
-    print(f"📸 Instagram से स्टाइल सीख रहा हूँ: @{TARGET_PROFILE}")
-    
-    if not TARGET_PROFILE:
-        print("⚠️ TARGET_PROFILE Set नहीं है! डिफॉल्ट प्रॉम्प्ट का उपयोग करेंगे")
-        return create_default_prompt()
-    
-    with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=True,
-            args=[
-                '--disable-blink-features=AutomationControlled',
-                '--no-sandbox',
-                '--disable-dev-shm-usage'
-            ]
-        )
-        
-        context = browser.new_context(
-            viewport={'width': 1280, 'height': 720},
-            user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        )
-        
-        page = context.new_page()
-        
-        try:
-            # 1. Instagram होम पेज
-            page.goto('https://www.instagram.com/')
-            page.wait_for_timeout(5000)
-            
-            # 2. लॉगिन - नए Selectors के साथ
-            try:
-                # पहले लॉगिन बटन पर क्लिक करें
-                page.click('text=Log in')
-                page.wait_for_timeout(2000)
-            except:
-                pass
-            
-            # Username और Password डालें
-            page.fill('input[name="username"]', IG_USERNAME)
-            page.fill('input[name="password"]', IG_PASSWORD)
-            page.click('button[type="submit"]')
-            page.wait_for_timeout(8000)
-            
-            # 3. "Not Now" बटन (अगर आया तो)
-            try:
-                page.click('button:has-text("Not Now")')
-                page.wait_for_timeout(3000)
-            except:
-                pass
-            
-            # 4. Save Info (अगर आया तो)
-            try:
-                page.click('button:has-text("Save Info")')
-                page.wait_for_timeout(2000)
-            except:
-                pass
-            
-            # 5. Target Profile पर जाएँ
-            page.goto(f'https://www.instagram.com/{TARGET_PROFILE}/')
-            page.wait_for_timeout(5000)
-            
-            # 6. पोस्ट लोड करें (स्क्रॉल करें)
-            for i in range(3):
-                page.evaluate('window.scrollBy(0, 800)')
-                page.wait_for_timeout(2000)
-            
-            # 7. पोस्ट लिंक निकालें
-            post_links = page.eval_on_selector_all(
-                'a[href*="/p/"]',
-                'els => els.map(el => el.href)'
-            )
-            
-            unique_links = list(dict.fromkeys(post_links))
-            print(f"✅ {len(unique_links)} पोस्ट मिले")
-            
-            if unique_links:
-                print(f"✅ पहली पोस्ट: {unique_links[0]}")
-            
-            browser.close()
-            return create_default_prompt()
-            
-        except Exception as e:
-            print(f"❌ Instagram Error: {e}")
-            browser.close()
-            return create_default_prompt()  # Error पर भी Default Prompt Use करें
-
-# ============================================
-# 📝 STYLE PROMPT
-# ============================================
-
-def create_default_prompt():
-    """
-    हाई-क्वालिटी प्रॉम्प्ट
-    """
-    return """
     A stunning high-quality portrait of an Indian bride.
     Traditional red bridal wear with gold embroidery.
     Beautiful jewelry, maang tikka, and earrings.
@@ -142,7 +41,155 @@ def create_default_prompt():
     Canon EOS R5, 85mm lens, f/1.4.
     National Geographic quality, sharp focus.
     Same face, same character.
+    """,
+    
+    # 2. Modern Bollywood Style
     """
+    A glamorous Bollywood actress portrait.
+    Modern fusion wear with intricate detailing.
+    Studio lighting with soft shadows.
+    Professional makeup, perfect skin texture.
+    High fashion editorial style.
+    Sony A7R IV, 50mm lens, f/1.8.
+    Cinematic, dramatic, stunning.
+    """,
+    
+    # 3. South Indian Beauty
+    """
+    A traditional South Indian woman in silk saree.
+    Rich kanjivaram saree with gold border.
+    Temple jewelry, jasmine flowers in hair.
+    Natural sunlight, temple architecture background.
+    Authentic, cultural, beautiful.
+    Nikon Z9, 85mm lens.
+    Vibrant colors, sharp details.
+    """,
+    
+    # 4. Royal Rajasthani Style
+    """
+    A royal Rajasthani woman in traditional attire.
+    Bandhani dupatta, heavy silver jewelry.
+    Desert palace background, golden hour.
+    Regal, elegant, majestic.
+    Leica M11, 50mm Summilux.
+    Warm tones, rich textures.
+    """,
+    
+    # 5. Modern Minimalist
+    """
+    A modern Indian woman in minimalist style.
+    Simple elegant outfit, subtle jewelry.
+    Clean white background, soft natural light.
+    Contemporary, fresh, sophisticated.
+    Professional headshot quality.
+    Sharp focus, natural skin texture.
+    """,
+    
+    # 6. Festival Special
+    """
+    An Indian woman celebrating Diwali.
+    Traditional lehenga with mirror work.
+    Diya background, festive lighting.
+    Joyful expression, vibrant colors.
+    Canon EOS R3, 24-70mm lens.
+    Festive, warm, celebratory.
+    """,
+    
+    # 7. Wedding Guest Look
+    """
+    A beautiful woman in wedding guest attire.
+    Elegant saree or lehenga.
+    Soft romantic lighting.
+    Floral background, dreamy atmosphere.
+    Professional wedding photography style.
+    Rich colors, soft bokeh.
+    """,
+    
+    # 8. Kashmiri Beauty
+    """
+    A Kashmiri woman in traditional pheran.
+    Snow-capped mountains background.
+    Natural winter lighting.
+    Authentic, cultural, serene.
+    Nikon D850, 70-200mm lens.
+    Crystal clear, sharp focus.
+    """
+]
+
+def create_default_prompt():
+    """
+    Randomly select a prompt for variety
+    """
+    return random.choice(PROMPTS)
+
+# ============================================
+# 📸 1. INSTAGRAM STYLE (Manually Define)
+# ============================================
+
+def learn_style_from_instagram():
+    """
+    Instagram Login Skip - Directly Use Default Prompt
+    """
+    print(f"📸 Instagram Login Skip - Using Manual Style Prompts")
+    print(f"🎯 Target Profile: @{TARGET_PROFILE}")
+    print(f"🔄 Random Prompt Selected for Variety")
+    
+    # Return random prompt from PROMPTS list
+    selected_prompt = random.choice(PROMPTS)
+    print(f"✅ Selected Prompt: {selected_prompt[:100]}...")
+    
+    return selected_prompt
+
+# ============================================
+# 🍪 MANUAL COOKIES USE (Option 1)
+# ============================================
+
+def learn_style_with_cookies():
+    """
+    अगर आपके पास Cookies JSON File है तो इसका उपयोग करें
+    """
+    print("🍪 Cookies के साथ Instagram Login...")
+    
+    if not os.path.exists("cookies.json"):
+        print("⚠️ cookies.json नहीं मिली! Skip कर रहा हूँ...")
+        return create_default_prompt()
+    
+    with sync_playwright() as p:
+        browser = p.chromium.launch(
+            headless=True,
+            args=['--no-sandbox']
+        )
+        
+        context = browser.new_context(
+            storage_state="cookies.json",  # ✅ Cookies Load करें
+            viewport={'width': 1280, 'height': 720}
+        )
+        
+        page = context.new_page()
+        
+        try:
+            page.goto(f'https://www.instagram.com/{TARGET_PROFILE}/')
+            page.wait_for_timeout(5000)
+            
+            # अगर Cookies काम करें तो Profile Load होगी
+            print("✅ Cookies Login Successful!")
+            
+            # पोस्ट लिंक निकालें
+            post_links = page.eval_on_selector_all(
+                'a[href*="/p/"]',
+                'els => els.map(el => el.href)'
+            )
+            
+            unique_links = list(dict.fromkeys(post_links))
+            print(f"✅ {len(unique_links)} पोस्ट मिले")
+            
+            browser.close()
+            
+        except Exception as e:
+            print(f"❌ Cookies Error: {e}")
+            browser.close()
+    
+    return create_default_prompt()
 
 # ============================================
 # 🎨 2. AI से PHOTO GENERATE करें
@@ -156,9 +203,9 @@ def generate_ai_image(prompt_text, filename="generated_photo.jpg"):
     
     # सरल और साफ प्रॉम्प्ट
     clean_prompt = prompt_text.strip().replace('\n', ' ').replace('  ', ' ')
-    encoded_prompt = urllib.parse.quote(clean_prompt[:200])  # सिर्फ 200 characters
+    encoded_prompt = urllib.parse.quote(clean_prompt[:200])
     
-    # FLUX API - सरल URL
+    # FLUX API
     flux_url = (
         f"https://image.pollinations.ai/prompt/{encoded_prompt}"
         f"?width=1024&height=1280"
@@ -167,13 +214,9 @@ def generate_ai_image(prompt_text, filename="generated_photo.jpg"):
         f"&seed={random.randint(1, 9999999)}"
     )
     
-    print(f"📤 URL: {flux_url[:100]}...")
-    
     try:
         print("⏳ 30-60 सेकंड लग सकते हैं...")
         response = requests.get(flux_url, timeout=180)
-        
-        print(f"📊 Status Code: {response.status_code}")
         
         if response.status_code == 200:
             content_size = len(response.content)
@@ -184,11 +227,9 @@ def generate_ai_image(prompt_text, filename="generated_photo.jpg"):
                 return filename
             else:
                 print(f"⚠️ फोटो बहुत छोटी है ({content_size} bytes)")
-                # Fallback: सरल प्रॉम्प्ट के साथ Retry
                 return generate_ai_image_simple(filename)
         else:
             print(f"❌ AI Error: {response.status_code}")
-            # Fallback
             return generate_ai_image_simple(filename)
             
     except Exception as e:
@@ -201,7 +242,14 @@ def generate_ai_image_simple(filename="generated_photo.jpg"):
     """
     print("🔄 सरल प्रॉम्प्ट के साथ Retry कर रहा हूँ...")
     
-    simple_prompt = "Beautiful Indian bride in traditional red dress, professional photography, high quality"
+    simple_prompts = [
+        "Beautiful Indian bride in traditional red dress, professional photography, high quality",
+        "Stunning Indian woman in saree, professional portrait, high resolution",
+        "Glamorous Bollywood actress portrait, professional photography, studio lighting",
+        "Elegant Indian woman in traditional jewelry, soft lighting, professional photo"
+    ]
+    
+    simple_prompt = random.choice(simple_prompts)
     encoded = urllib.parse.quote(simple_prompt)
     
     url = f"https://image.pollinations.ai/prompt/{encoded}?width=1024&height=1280&model=flux&nologo=true"
@@ -216,7 +264,6 @@ def generate_ai_image_simple(filename="generated_photo.jpg"):
     except:
         pass
     
-    # अगर सब कुछ Fail हो तो Placeholder Image
     print("⚠️ Placeholder Image बना रहा हूँ...")
     return create_placeholder_image(filename)
 
@@ -230,7 +277,6 @@ def create_placeholder_image(filename="placeholder.jpg"):
         img = Image.new('RGB', (1024, 1280), color=(255, 200, 230))
         draw = ImageDraw.Draw(img)
         
-        # Text डालें
         text = "✨ AI Beauty ✨"
         try:
             font = ImageFont.load_default()
@@ -242,7 +288,6 @@ def create_placeholder_image(filename="placeholder.jpg"):
         print(f"✅ Placeholder Image बन गई!")
         return filename
     except:
-        # PIL न हो तो Simple File बनाएँ
         with open(filename, 'wb') as f:
             f.write(b'PLACEHOLDER_IMAGE')
         return filename
@@ -253,7 +298,7 @@ def create_placeholder_image(filename="placeholder.jpg"):
 
 def generate_caption():
     """
-    Viral Instagram-style Caption
+    Viral Instagram-style Caption with variety
     """
     hour = datetime.now().hour
     if 6 <= hour < 12:
@@ -290,7 +335,21 @@ def generate_caption():
 
 💡 50+ Comments = Next Post Aaj Raat hi!
 
-#AIBride #IndianWedding #AIArt #TrendingReels #ViralPost #FYP #ExplorePage #AIFashion #BridalWear #AICommunity #DigitalArt #AIInfluencer #AIModel #FashionAI #IndianFashion #BollywoodStyle #AIArtCommunity #ViralReels #InstagramReels #Explore #TrendingNow #AIContent #AIGirl #ArtificialIntelligence #TechFashion #FutureOfFashion #AIforIndia #IndianAI #DesiBride #ShaadiGoals"""
+#AIBride #IndianWedding #AIArt #TrendingReels #ViralPost #FYP #ExplorePage #AIFashion #BridalWear #AICommunity #DigitalArt #AIInfluencer #AIModel #FashionAI #IndianFashion #BollywoodStyle #AIArtCommunity #ViralReels #InstagramReels #Explore #TrendingNow #AIContent #AIGirl #ArtificialIntelligence #TechFashion #FutureOfFashion #AIforIndia #IndianAI #DesiBride #ShaadiGoals""",
+        
+        f"""{time_text}
+
+💃 AI Generated - Royal Indian Beauty!
+
+कौन सा style सबसे best लगा?
+👇 Comment में बताओ:
+👑 Traditional
+💎 Modern
+🌸 Fusion
+
+🎯 200+ Votes = Next Look Special!
+
+#RoyalBeauty #IndianFashion #AIArt #ViralReels #ExplorePage #FYP #TraditionalWear #ModernFashion #AICouture #VirtualInfluencer #AICommunity #DigitalArt #FashionGram #BridalFashion #IndianBride #AIContent #TechFashion #FutureOfFashion #AIforIndia #IndianAI #DesiBride #ShaadiGoals #AIFashionista #StyleInspo #OOTD #FashionGoals"""
     ]
     
     return random.choice(captions)
@@ -349,6 +408,34 @@ def cleanup_files(*files):
                 pass
 
 # ============================================
+# 📝 6. COOKIES CREATE (एक बार मैन्युअली)
+# ============================================
+
+def create_cookies():
+    """
+    एक बार मैन्युअली चलाकर Cookies Save करें
+    """
+    print("🍪 Cookies बना रहा हूँ... कृपया मैन्युअली Login करें")
+    
+    if not IG_USERNAME or not IG_PASSWORD:
+        print("❌ Instagram Credentials नहीं मिले!")
+        return False
+    
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=False)
+        context = browser.new_context()
+        page = context.new_page()
+        
+        page.goto('https://www.instagram.com/')
+        input("✅ ब्राउज़र खुला है। कृपया मैन्युअली Login करें और Enter दबाएँ...")
+        
+        # Cookies Save करें
+        context.storage_state(path="cookies.json")
+        print("✅ cookies.json Save हो गई!")
+        browser.close()
+        return True
+
+# ============================================
 # 🚀 6. MAIN BOT
 # ============================================
 
@@ -362,14 +449,11 @@ def main():
     start_time = time.time()
     
     try:
-        # STEP 1: Instagram से स्टाइल सीखें
-        print("\n📸 STEP 1: Instagram स्टाइल सीख रहा हूँ...")
+        # STEP 1: Style Select (Instagram Skip)
+        print("\n📸 STEP 1: Style Select...")
         style_prompt = learn_style_from_instagram()
         
-        if not style_prompt:
-            style_prompt = create_default_prompt()
-        
-        print(f"✅ प्रॉम्प्ट तैयार: {style_prompt[:100]}...")
+        print(f"✅ Selected Style: {style_prompt[:100]}...")
         
         # STEP 2: AI से फोटो बनाएं
         print("\n🎨 STEP 2: AI से फोटो बना रहा हूँ...")
@@ -416,5 +500,8 @@ def main():
 # ============================================
 
 if __name__ == "__main__":
+    # अगर Cookies बनानी है तो इस Function को Call करें
+    # create_cookies()  # एक बार मैन्युअली चलाएँ
+    
     success = main()
     sys.exit(0 if success else 1)
