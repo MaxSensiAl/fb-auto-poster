@@ -123,7 +123,7 @@ def create_default_prompt():
     return random.choice(PROMPTS)
 
 # ============================================
-# 📸 1. INSTAGRAM STYLE (Manually Define)
+# 📸 1. INSTAGRAM STYLE (Skip Login)
 # ============================================
 
 def learn_style_from_instagram():
@@ -141,26 +141,28 @@ def learn_style_from_instagram():
     return selected_prompt
 
 # ============================================
-# 🎨 2. AI से PHOTO GENERATE करें
+# 🎨 2. AI से PHOTO GENERATE करें (High Quality)
 # ============================================
 
 def generate_ai_image(prompt_text, filename="generated_photo.jpg"):
     """
     FLUX AI से हाई-क्वालिटी फोटो जनरेट करें
     """
-    print("🎨 AI से नई फोटो बना रहा हूँ...")
+    print("🎨 AI से High Quality फोटो बना रहा हूँ...")
     
     # सरल और साफ प्रॉम्प्ट
     clean_prompt = prompt_text.strip().replace('\n', ' ').replace('  ', ' ')
     encoded_prompt = urllib.parse.quote(clean_prompt[:200])
     
-    # FLUX API
+    # ✅ High Resolution के लिए Settings
     flux_url = (
         f"https://image.pollinations.ai/prompt/{encoded_prompt}"
-        f"?width=1024&height=1280"
+        f"?width=1536&height=2048"  # ✅ Higher Resolution
         f"&model=flux"
         f"&nologo=true"
         f"&seed={random.randint(1, 9999999)}"
+        f"&quality=high"  # ✅ High Quality
+        f"&enhance=true"  # ✅ Enhance
     )
     
     try:
@@ -173,6 +175,9 @@ def generate_ai_image(prompt_text, filename="generated_photo.jpg"):
                 with open(filename, 'wb') as f:
                     f.write(response.content)
                 print(f"✅ फोटो बन गई! ({content_size/1024:.1f} KB)")
+                
+                # ✅ Image Enhance
+                enhance_image_quality(filename)
                 return filename
             else:
                 print(f"⚠️ फोटो बहुत छोटी है ({content_size} bytes)")
@@ -201,7 +206,7 @@ def generate_ai_image_simple(filename="generated_photo.jpg"):
     simple_prompt = random.choice(simple_prompts)
     encoded = urllib.parse.quote(simple_prompt)
     
-    url = f"https://image.pollinations.ai/prompt/{encoded}?width=1024&height=1280&model=flux&nologo=true"
+    url = f"https://image.pollinations.ai/prompt/{encoded}?width=1536&height=2048&model=flux&nologo=true&quality=high&enhance=true"
     
     try:
         response = requests.get(url, timeout=180)
@@ -209,6 +214,7 @@ def generate_ai_image_simple(filename="generated_photo.jpg"):
             with open(filename, 'wb') as f:
                 f.write(response.content)
             print(f"✅ Retry Success! ({len(response.content)/1024:.1f} KB)")
+            enhance_image_quality(filename)
             return filename
     except:
         pass
@@ -223,7 +229,7 @@ def create_placeholder_image(filename="placeholder.jpg"):
     try:
         from PIL import Image, ImageDraw, ImageFont
         
-        img = Image.new('RGB', (1024, 1280), color=(255, 200, 230))
+        img = Image.new('RGB', (1536, 2048), color=(255, 200, 230))
         draw = ImageDraw.Draw(img)
         
         text = "✨ AI Beauty ✨"
@@ -232,7 +238,7 @@ def create_placeholder_image(filename="placeholder.jpg"):
         except:
             font = None
         
-        draw.text((400, 600), text, fill=(200, 50, 100), font=font)
+        draw.text((600, 900), text, fill=(200, 50, 100), font=font)
         img.save(filename)
         print(f"✅ Placeholder Image बन गई!")
         return filename
@@ -240,6 +246,47 @@ def create_placeholder_image(filename="placeholder.jpg"):
         with open(filename, 'wb') as f:
             f.write(b'PLACEHOLDER_IMAGE')
         return filename
+
+# ============================================
+# 🖼️ IMAGE ENHANCE
+# ============================================
+
+def enhance_image_quality(image_path):
+    """
+    Image Quality Enhance - Resolution, Sharpness, Contrast
+    """
+    try:
+        from PIL import Image, ImageEnhance
+        
+        img = Image.open(image_path)
+        
+        # 1. Resolution Check
+        width, height = img.size
+        print(f"📐 Current Resolution: {width}x{height}")
+        
+        if width < 1024 or height < 1024:
+            new_width = max(width * 2, 1024)
+            new_height = max(height * 2, 1280)
+            print(f"📐 Resizing: {width}x{height} → {new_width}x{new_height}")
+            img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        
+        # 2. Sharpness Enhance
+        enhancer = ImageEnhance.Sharpness(img)
+        img = enhancer.enhance(1.5)  # 50% Sharpness Increase
+        
+        # 3. Contrast Enhance
+        enhancer = ImageEnhance.Contrast(img)
+        img = enhancer.enhance(1.2)  # 20% Contrast Increase
+        
+        # 4. High Quality Save
+        img.save(image_path, quality=95, optimize=True, format='JPEG')
+        new_size = os.path.getsize(image_path)
+        print(f"✅ Enhanced! New Size: {new_size/1024:.1f} KB")
+        return True
+        
+    except Exception as e:
+        print(f"⚠️ Enhancement Error: {e}")
+        return False
 
 # ============================================
 # 📷 PHOTO QUALITY CHECK
@@ -429,6 +476,34 @@ def cleanup_files(*files):
                 pass
 
 # ============================================
+# 🍪 COOKIES CREATE (Optional - एक बार मैन्युअली)
+# ============================================
+
+def create_cookies():
+    """
+    एक बार मैन्युअली चलाकर Cookies Save करें
+    """
+    print("🍪 Cookies बना रहा हूँ... कृपया मैन्युअली Login करें")
+    
+    if not IG_USERNAME or not IG_PASSWORD:
+        print("❌ Instagram Credentials नहीं मिले!")
+        return False
+    
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=False)
+        context = browser.new_context()
+        page = context.new_page()
+        
+        page.goto('https://www.instagram.com/')
+        input("✅ ब्राउज़र खुला है। कृपया मैन्युअली Login करें और Enter दबाएँ...")
+        
+        # Cookies Save करें
+        context.storage_state(path="cookies.json")
+        print("✅ cookies.json Save हो गई!")
+        browser.close()
+        return True
+
+# ============================================
 # 🚀 6. MAIN BOT
 # ============================================
 
@@ -509,5 +584,8 @@ def main():
 # ============================================
 
 if __name__ == "__main__":
+    # अगर Cookies बनानी है तो इस Function को Call करें
+    # create_cookies()  # एक बार मैन्युअली चलाएँ
+    
     success = main()
     sys.exit(0 if success else 1)
