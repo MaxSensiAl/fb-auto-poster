@@ -2,20 +2,17 @@ import os
 import sys
 import random
 import requests
+import base64
 from datetime import datetime
-import google.generativeai as genai
 
 # ============================================
-# ENVIRONMENT VARIABLES (GitHub Secrets से)
+# ENVIRONMENT VARIABLES
 # ============================================
 PAGE_ID = os.environ.get("FB_PAGE_ID")
 ACCESS_TOKEN = os.environ.get("FB_ACCESS_TOKEN")
 GEMINI_API = os.environ.get("GEMINI_API")
 
-# Google API कॉन्फ़िगर करें
-if GEMINI_API:
-    genai.configure(api_key=GEMINI_API)
-else:
+if not GEMINI_API:
     print("❌ ERROR: GEMINI_API Key is missing in environment variables!")
     sys.exit(1)
 
@@ -72,32 +69,39 @@ def generate_trending_caption():
     return random.choice(captions)
 
 # ============================================
-# 🎨 GENERATE IMAGE FROM GOOGLE IMAGEN 3
+# 🎨 GENERATE IMAGE FROM GOOGLE IMAGEN 3 (DIRECT REST API)
 # ============================================
 def generate_imagen_3_image(prompt_text, filename="temp_output.jpg"):
-    """Google Imagen 3 से विकृति-रहित एचडी इमेज बनाएं"""
-    print("🎨 Generating Ultra-Realistic Image via Google Imagen 3...")
+    """Google Imagen 3 API को सीधे कॉल करके इमेज जनरेट करें (No Library Required)"""
+    print("🎨 Generating Ultra-Realistic Image via Google Imagen 3 Direct API...")
+    
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:generateImages?key={GEMINI_API}"
+    
+    payload = {
+        "prompt": prompt_text,
+        "numberOfImages": 1,
+        "aspectRatio": "3:4",  # बेस्ट पोर्ट्रेट आकार
+        "outputMimeType": "image/jpeg"
+    }
     
     try:
-        # Google Imagen 3 मॉडल लोड करें
-        model = genai.ImageGenerationModel("imagen-3.0-generate-002")
+        response = requests.post(url, json=payload, timeout=120)
         
-        # इमेज जनरेट करें
-        result = model.generate_images(
-            prompt=prompt_text,
-            number_of_images=1,
-            aspect_ratio="3:4",  # फेसबुक/इंस्टाग्राम के लिए बेस्ट पोर्ट्रेट आकार
-            output_mime_type="image/jpeg"
-        )
-        
-        # इमेज सेव करें
-        for image in result.generated_images:
-            image.image.save(filename)
-            print("✅ Successfully generated via Google Imagen 3!")
-            return filename
+        if response.status_code == 200:
+            data = response.json()
+            # Base64 इमेज डेटा को डिकोड करके फाइल में सेव करें
+            image_b64 = data['generatedImages'][0]['image']['imageBytes']
+            image_bytes = base64.b64decode(image_b64)
             
+            with open(filename, 'wb') as f:
+                f.write(image_bytes)
+                
+            print("✅ Successfully generated via Google Imagen 3 REST API!")
+            return filename
+        else:
+            print(f"❌ Google API Error ({response.status_code}): {response.text}")
     except Exception as e:
-        print(f"❌ Google Imagen 3 Failed: {e}")
+        print(f"❌ Direct API Request Failed: {e}")
         
     return None
 
@@ -140,7 +144,7 @@ def trending_girl_bot():
         
     final_prompt = random.choice(PERFECT_FACE_PROMPTS)
     
-    # Google Imagen 3 से इमेज बनाएं
+    # सीधे API से इमेज बनाएं
     local_image = generate_imagen_3_image(final_prompt)
     
     if not local_image:
@@ -154,7 +158,7 @@ def trending_girl_bot():
         os.remove(local_image)
         
     if post_id:
-        print("🎉 Workflow successfully completed using Google Imagen 3!")
+        print("🎉 Workflow successfully completed using Google Imagen 3 API!")
         return True
     return False
 
