@@ -2,8 +2,8 @@ name: AI Beauty Bot - Post Image
 
 on:
   schedule:
-    - cron: '0 4,10,16,22 * * *'  # UTC: 4AM, 10AM, 4PM, 10PM (IST: 9:30AM, 3:30PM, 9:30PM, 3:30AM)
-  workflow_dispatch:  # Manual trigger
+    - cron: '*/30 * * * *'  # 🔥 हर 30 मिनट में
+  workflow_dispatch:
 
 jobs:
   post-image:
@@ -31,12 +31,3 @@ jobs:
         HF_TOKEN: ${{ secrets.HF_TOKEN }}
       run: |
         python fb_bot.py
-
-    - name: Upload Logs on Failure
-      if: failure()
-      uses: actions/upload-artifact@v4
-      with:
-        name: error-logs
-        path: |
-          *.log
-          *.txt
