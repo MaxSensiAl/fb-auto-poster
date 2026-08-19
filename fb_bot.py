@@ -2,7 +2,6 @@ import requests
 import random
 import os
 import urllib.parse
-import time
 import sys
 from datetime import datetime
 
@@ -13,39 +12,7 @@ PAGE_ID = os.environ.get("FB_PAGE_ID")
 ACCESS_TOKEN = os.environ.get("FB_ACCESS_TOKEN")
 
 # ============================================
-# TOKEN REFRESH FUNCTION (CORRECTED FOR PAGE TOKEN)
-# ============================================
-def refresh_token_if_needed():
-    """Check and refresh token if expired"""
-    
-    global ACCESS_TOKEN
-    
-    if not ACCESS_TOKEN or not PAGE_ID:
-        print("❌ No access token or Page ID found!")
-        return False
-    
-    # सुधार: यहाँ 'me' के बजाय '{PAGE_ID}' का उपयोग किया गया है
-    test_url = f"https://graph.facebook.com/{PAGE_ID}?access_token={ACCESS_TOKEN}"
-    try:
-        response = requests.get(test_url, timeout=10)
-        
-        if response.status_code == 200:
-            print("✅ Token is valid!")
-            return True
-        elif "Session has expired" in response.text or "OAuthException" in response.text:
-            print("⚠️ Token expired or invalid! Please update GitHub Secret.")
-            print("📌 Get new token from Facebook Developer Console")
-            return False
-        else:
-            print(f"⚠️ Token error: {response.text}")
-            return False
-            
-    except Exception as e:
-        print(f"⚠️ Connection error: {e}")
-        return False
-
-# ============================================
-# HIGH QUALITY PROMPTS
+# HIGH QUALITY PROMPTS (FLUX & SDXL)
 # ============================================
 HIGH_QUALITY_PROMPTS = [
     """masterpiece, best quality, ultra realistic, 8k resolution, award-winning photography, shot on Canon EOS R5, 85mm lens, f/1.4, professional studio lighting, softbox, golden hour, sharp focus, shallow depth of field, bokeh background, national geographic style, hyper detailed, 32k, cinematic, vogue magazine cover style, a breathtakingly beautiful Indian bride wearing heavy red and gold bridal lehenga, intricate zari work, traditional gold jewelry, maang tikka, nath, glowing skin with dewy makeup, soft natural smile""",
@@ -74,7 +41,6 @@ HIGH_QUALITY_PROMPTS = [
 # ============================================
 def get_smart_caption():
     """Generate smart captions based on time"""
-    
     hour = datetime.now().hour
     
     if 6 <= hour < 12:
@@ -131,7 +97,6 @@ def get_smart_caption():
 # ============================================
 def predict_viral_score(prompt_text):
     """Calculate viral score"""
-    
     keywords = {
         "masterpiece": 20, "award-winning": 20, "national geographic": 20,
         "vogue magazine": 20, "cinematic": 15,
@@ -179,7 +144,7 @@ def post_high_quality_ai_image():
     # 3. Generate smart caption
     caption = get_smart_caption()
     
-    # 4. Create high quality URL with FLUX Model
+    # 4. Create high quality URL with FLUX model
     encoded_prompt = urllib.parse.quote(prompt)
     
     ai_image_url = (
@@ -196,27 +161,14 @@ def post_high_quality_ai_image():
     Uploading started...
     ===================================================
     
-    Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-    Day: {datetime.now().strftime('%A')}
-    
     Model: FLUX (Highest Quality)
     Resolution: 1080x1350 Portrait HD
-    Camera: Canon EOS R5 + 85mm Lens
-    Lighting: Studio Lighting + Golden Hour
     
     Viral Score: {viral_score}%
-    Quality Level: {'🔴' if viral_score < 50 else '🟡' if viral_score < 75 else '🟢'}
-    
-    Caption: {caption[:80]}...
     ===================================================
     """)
     
-    # 6. Check token validity first
-    if not refresh_token_if_needed():
-        print("❌ Token invalid! Please update GitHub Secret.")
-        return False
-    
-    # 7. Post to Facebook
+    # 6. Post to Facebook directly
     fb_url = f"https://graph.facebook.com/{PAGE_ID}/photos"
     payload = {
         'url': ai_image_url,
@@ -230,29 +182,15 @@ def post_high_quality_ai_image():
         
         if response.status_code == 200:
             post_id = response.json().get('id')
-            print(f"""
-    ✅ POST SUCCESSFUL!
-    Post ID: {post_id}
-    Viral Score: {viral_score}%
-    Quality: FLUX HD!
-    ===================================================
-            """)
+            print(f"✅ POST SUCCESSFUL! Post ID: {post_id}")
             return True
         else:
-            print(f"""
-    ❌ POST FAILED!
-    Status: {response.status_code}
-    Error: {response.text}
-    ===================================================
-            """)
+            print(f"❌ POST FAILED! Status Code: {response.status_code}")
+            print(f"Error details: {response.text}")
             return False
             
     except Exception as e:
-        print(f"""
-    ⚠️ CONNECTION ERROR!
-    Error: {str(e)}
-    ===================================================
-        """)
+        print(f"⚠️ CONNECTION ERROR! Error: {str(e)}")
         return False
 
 # ============================================
@@ -261,36 +199,12 @@ def post_high_quality_ai_image():
 def auto_poster():
     """GitHub Actions auto poster"""
     
-    print("""
-    ===================================================
-    AI AUTO POSTER - GITHUB ACTIONS
-    Running on Schedule
-    High Quality Images Every 30 Mins
-    ===================================================
-    """)
-    
     if not PAGE_ID or not ACCESS_TOKEN:
-        print("""
-    ❌ ERROR: FB_PAGE_ID and FB_ACCESS_TOKEN not set!
-    Add to GitHub Secrets:
-       - FB_PAGE_ID
-       - FB_ACCESS_TOKEN
-        """)
+        print("❌ ERROR: FB_PAGE_ID and FB_ACCESS_TOKEN not set!")
         sys.exit(1)
     
-    # Token check
-    if not refresh_token_if_needed():
-        print("""
-    ❌ TOKEN EXPIRED!
-    📌 Get new token from Facebook Developer Console
-    📌 Update GitHub Secret: FB_ACCESS_TOKEN
-        """)
-        sys.exit(1)
-    
-    success = post_high_quality_ai_image()
-    
-    if not success:
-        print("❌ Post failed!")
+    # Directly post
+    post_high_quality_ai_image()
 
 # ============================================
 # MAIN
