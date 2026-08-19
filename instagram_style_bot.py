@@ -186,7 +186,6 @@ def generate_ai_image(prompt_text, filename="generated_photo.jpg"):
     clean_prompt = prompt_text.strip().replace('\n', ' ').replace('  ', ' ')
     encoded_prompt = urllib.parse.quote(clean_prompt[:250])
     
-    # चेहरे को बिल्कुल साफ रखने के लिए परफेक्ट 1024x1024 आकार
     flux_url = (
         f"https://image.pollinations.ai/prompt/{encoded_prompt}"
         f"?width=1024&height=1024"  # वर्गाकार आकार चेहरे को विकृत होने से पूरी तरह बचाता है
@@ -345,7 +344,7 @@ def post_to_facebook(image_path, caption):
     
     try:
         with open(image_path, 'rb') as img_file:
-            files = {'source': img_file: 'image/jpeg'}
+            files = {'source': img_file}  # ✅ सिंटैक्स एरर को पूरी तरह ठीक किया गया
             response = session.post(fb_url, data=payload, files=files, timeout=120)
         
         if response.status_code == 200:
