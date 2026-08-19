@@ -27,25 +27,27 @@ print(f"✅ Target: @{TARGET_PROFILE}")
 print(f"✅ Facebook Page: {FB_PAGE_ID[:3]}***")
 
 # ============================================
-# 🎨 MULTIPLE PROMPTS (Variety के लिए)
+# 🎨 MULTIPLE PROMPTS (बेहतर चेहरे और क्वालिटी के लिए)
 # ============================================
 
 PROMPTS = [
     # 1. Traditional Indian Bride
     """
-    A stunning high-quality portrait of an Indian bride.
+    A stunning high-quality portrait of an Indian bride, 
+    highly detailed symmetrical facial features, realistic clear eyes, 
+    natural skin texture, sharp focus on face.
     Traditional red bridal wear with gold embroidery.
     Beautiful jewelry, maang tikka, and earrings.
     Soft golden hour lighting, dreamy background.
     8k resolution, photorealistic, professional.
     Canon EOS R5, 85mm lens, f/1.4.
-    National Geographic quality, sharp focus.
     Same face, same character.
     """,
     
     # 2. Modern Bollywood Style
     """
-    A glamorous Bollywood actress portrait.
+    A glamorous Bollywood actress portrait, 
+    symmetrical facial features, detailed eyes, natural skin structure.
     Modern fusion wear with intricate detailing.
     Studio lighting with soft shadows.
     Professional makeup, perfect skin texture.
@@ -56,60 +58,65 @@ PROMPTS = [
     
     # 3. South Indian Beauty
     """
-    A traditional South Indian woman in silk saree.
+    A traditional South Indian woman in silk saree, 
+    highly detailed symmetrical face, clear eyes, natural skin.
     Rich kanjivaram saree with gold border.
     Temple jewelry, jasmine flowers in hair.
     Natural sunlight, temple architecture background.
-    Authentic, cultural, beautiful.
+    Authentic, cultural, beautiful, sharp focus on face.
     Nikon Z9, 85mm lens.
     Vibrant colors, sharp details.
     """,
     
     # 4. Royal Rajasthani Style
     """
-    A royal Rajasthani woman in traditional attire.
+    A royal Rajasthani woman in traditional attire, 
+    clear symmetrical facial features, highly detailed eyes, realistic look.
     Bandhani dupatta, heavy silver jewelry.
     Desert palace background, golden hour.
-    Regal, elegant, majestic.
+    Regal, elegant, majestic, sharp focus.
     Leica M11, 50mm Summilux.
     Warm tones, rich textures.
     """,
     
     # 5. Modern Minimalist
     """
-    A modern Indian woman in minimalist style.
+    A modern Indian woman in minimalist style, 
+    symmetrical face, natural skin texture, highly detailed facial features.
     Simple elegant outfit, subtle jewelry.
     Clean white background, soft natural light.
     Contemporary, fresh, sophisticated.
-    Professional headshot quality.
-    Sharp focus, natural skin texture.
+    Professional headshot quality, sharp focus on face.
     """,
     
     # 6. Festival Special
     """
-    An Indian woman celebrating Diwali.
+    An Indian woman celebrating Diwali, 
+    happy expression, symmetrical facial features, clear realistic eyes.
     Traditional lehenga with mirror work.
     Diya background, festive lighting.
-    Joyful expression, vibrant colors.
+    Joyful expression, vibrant colors, sharp focus on face.
     Canon EOS R3, 24-70mm lens.
     Festive, warm, celebratory.
     """,
     
     # 7. Wedding Guest Look
     """
-    A beautiful woman in wedding guest attire.
+    A beautiful woman in wedding guest attire, 
+    highly detailed symmetrical face, natural skin, realistic features.
     Elegant saree or lehenga.
     Soft romantic lighting.
-    Floral background, dreamy atmosphere.
+    Floral background, dreamy atmosphere, sharp focus on face.
     Professional wedding photography style.
     Rich colors, soft bokeh.
     """,
     
     # 8. Kashmiri Beauty
     """
-    A Kashmiri woman in traditional pheran.
+    A Kashmiri woman in traditional pheran, 
+    highly detailed symmetrical face, clear eyes, natural realistic skin.
     Snow-capped mountains background.
-    Natural winter lighting.
+    Natural winter lighting, sharp focus on face.
     Authentic, cultural, serene.
     Nikon D850, 70-200mm lens.
     Crystal clear, sharp focus.
@@ -154,15 +161,15 @@ def generate_ai_image(prompt_text, filename="generated_photo.jpg"):
     clean_prompt = prompt_text.strip().replace('\n', ' ').replace('  ', ' ')
     encoded_prompt = urllib.parse.quote(clean_prompt[:200])
     
-    # ✅ High Resolution के लिए Settings
+    # ✅ चेहरे की स्पष्टता के लिए स्थिर रिज़ॉल्यूशन (1024x1280) का उपयोग
     flux_url = (
         f"https://image.pollinations.ai/prompt/{encoded_prompt}"
-        f"?width=1536&height=2048"  # ✅ Higher Resolution
+        f"?width=1024&height=1280"  # ✅ चेहरे की विकृति को रोकने के लिए सुधरा हुआ आकार
         f"&model=flux"
         f"&nologo=true"
         f"&seed={random.randint(1, 9999999)}"
-        f"&quality=high"  # ✅ High Quality
-        f"&enhance=true"  # ✅ Enhance
+        f"&quality=high"  
+        f"&enhance=true"  
     )
     
     try:
@@ -197,16 +204,16 @@ def generate_ai_image_simple(filename="generated_photo.jpg"):
     print("🔄 सरल प्रॉम्प्ट के साथ Retry कर रहा हूँ...")
     
     simple_prompts = [
-        "Beautiful Indian bride in traditional red dress, professional photography, high quality",
-        "Stunning Indian woman in saree, professional portrait, high resolution",
-        "Glamorous Bollywood actress portrait, professional photography, studio lighting",
-        "Elegant Indian woman in traditional jewelry, soft lighting, professional photo"
+        "Beautiful Indian bride in traditional red dress, symmetrical face, clear eyes, professional photography",
+        "Stunning Indian woman in saree, symmetrical facial features, realistic eyes, professional portrait",
+        "Glamorous Bollywood actress portrait, symmetrical face, professional photography, studio lighting",
+        "Elegant Indian woman in traditional jewelry, detailed face, soft lighting, professional photo"
     ]
     
     simple_prompt = random.choice(simple_prompts)
     encoded = urllib.parse.quote(simple_prompt)
     
-    url = f"https://image.pollinations.ai/prompt/{encoded}?width=1536&height=2048&model=flux&nologo=true&quality=high&enhance=true"
+    url = f"https://image.pollinations.ai/prompt/{encoded}?width=1024&height=1280&model=flux&nologo=true&quality=high&enhance=true"
     
     try:
         response = requests.get(url, timeout=180)
@@ -224,12 +231,12 @@ def generate_ai_image_simple(filename="generated_photo.jpg"):
 
 def create_placeholder_image(filename="placeholder.jpg"):
     """
-    अगर AI काम न करे तो Placeholder Image बनाएँ
+    अगर AI काम न करे तो Placeholder Image बनाएं
     """
     try:
         from PIL import Image, ImageDraw, ImageFont
         
-        img = Image.new('RGB', (1536, 2048), color=(255, 200, 230))
+        img = Image.new('RGB', (1024, 1280), color=(255, 200, 230))
         draw = ImageDraw.Draw(img)
         
         text = "✨ AI Beauty ✨"
@@ -238,7 +245,7 @@ def create_placeholder_image(filename="placeholder.jpg"):
         except:
             font = None
         
-        draw.text((600, 900), text, fill=(200, 50, 100), font=font)
+        draw.text((400, 600), text, fill=(200, 50, 100), font=font)
         img.save(filename)
         print(f"✅ Placeholder Image बन गई!")
         return filename
@@ -253,7 +260,7 @@ def create_placeholder_image(filename="placeholder.jpg"):
 
 def enhance_image_quality(image_path):
     """
-    Image Quality Enhance - Resolution, Sharpness, Contrast
+    Image Quality Enhance - संतुलित सेटिंग्स के साथ
     """
     try:
         from PIL import Image, ImageEnhance
@@ -264,19 +271,19 @@ def enhance_image_quality(image_path):
         width, height = img.size
         print(f"📐 Current Resolution: {width}x{height}")
         
-        if width < 1024 or height < 1024:
-            new_width = max(width * 2, 1024)
-            new_height = max(height * 2, 1280)
+        if width < 1024 or height < 1280:
+            new_width = 1024
+            new_height = 1280
             print(f"📐 Resizing: {width}x{height} → {new_width}x{new_height}")
             img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
         
-        # 2. Sharpness Enhance
+        # 2. Sharpness Enhance (चेहरे की त्वचा को प्राकृतिक रखने के लिए इसे कम किया गया)
         enhancer = ImageEnhance.Sharpness(img)
-        img = enhancer.enhance(1.5)  # 50% Sharpness Increase
+        img = enhancer.enhance(1.1)  # 10% Sharpness Increase (प्राकृतिक लुक के लिए)
         
         # 3. Contrast Enhance
         enhancer = ImageEnhance.Contrast(img)
-        img = enhancer.enhance(1.2)  # 20% Contrast Increase
+        img = enhancer.enhance(1.05)  # 5% Contrast Increase
         
         # 4. High Quality Save
         img.save(image_path, quality=95, optimize=True, format='JPEG')
@@ -327,9 +334,6 @@ def check_image_quality(image_path):
                 print(f"❌ Resolution बहुत कम है! ({width}x{height})")
                 return False
             
-            if width < 768 or height < 768:
-                print(f"⚠️ Resolution थोड़ी कम है ({width}x{height})")
-            
             # Format Check
             print(f"📁 Format: {img.format}")
             
@@ -366,7 +370,7 @@ def check_image_quality(image_path):
 
 def generate_caption():
     """
-    Viral Instagram-style Caption - Fixed Emojis ✅
+    Viral Instagram-style Caption
     """
     hour = datetime.now().hour
     if 6 <= hour < 12:
@@ -476,34 +480,6 @@ def cleanup_files(*files):
                 pass
 
 # ============================================
-# 🍪 COOKIES CREATE (Optional - एक बार मैन्युअली)
-# ============================================
-
-def create_cookies():
-    """
-    एक बार मैन्युअली चलाकर Cookies Save करें
-    """
-    print("🍪 Cookies बना रहा हूँ... कृपया मैन्युअली Login करें")
-    
-    if not IG_USERNAME or not IG_PASSWORD:
-        print("❌ Instagram Credentials नहीं मिले!")
-        return False
-    
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)
-        context = browser.new_context()
-        page = context.new_page()
-        
-        page.goto('https://www.instagram.com/')
-        input("✅ ब्राउज़र खुला है। कृपया मैन्युअली Login करें और Enter दबाएँ...")
-        
-        # Cookies Save करें
-        context.storage_state(path="cookies.json")
-        print("✅ cookies.json Save हो गई!")
-        browser.close()
-        return True
-
-# ============================================
 # 🚀 6. MAIN BOT
 # ============================================
 
@@ -546,7 +522,7 @@ def main():
                     print("⚠️ Quality Check फिर Fail हुई! Placeholder use कर रहा हूँ...")
                     image_path = create_placeholder_image("placeholder_final.jpg")
         
-        # STEP 3: कैप्शन बनाएं (Fixed Emojis)
+        # STEP 3: कैप्शन बनाएं
         print("\n📝 STEP 3: कैप्शन बना रहा हूँ...")
         caption = generate_caption()
         print(f"✅ कैप्शन तैयार ({len(caption)} अक्षर)")
@@ -584,8 +560,5 @@ def main():
 # ============================================
 
 if __name__ == "__main__":
-    # अगर Cookies बनानी है तो इस Function को Call करें
-    # create_cookies()  # एक बार मैन्युअली चलाएँ
-    
     success = main()
     sys.exit(0 if success else 1)
