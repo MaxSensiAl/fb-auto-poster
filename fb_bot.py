@@ -3,17 +3,18 @@ import random
 import os
 import sys
 import time
+import urllib.parse
 from datetime import datetime
 
 # ============================================
-# ENVIRONMENT VARIABLES (GitHub Secrets से आएंगे)
+# ENVIRONMENT VARIABLES
 # ============================================
 PAGE_ID = os.environ.get("FB_PAGE_ID")
 ACCESS_TOKEN = os.environ.get("FB_ACCESS_TOKEN")
 HF_TOKEN = os.environ.get("HF_TOKEN")
 
 # ============================================
-# HIGH QUALITY FLUX PROMPTS - (हमेशा फुल-बॉडी और रियलिस्टिक फोटो)
+# HIGH QUALITY FLUX PROMPTS
 # ============================================
 PERFECT_FACE_PROMPTS = [
     """Full-length portrait photograph of a beautiful Indian bride standing gracefully. She is wearing a traditional red designer lehenga with intricate gold embroidery. The shot shows her entire outfit from head to toe. Symmetrical gold wedding jewelry, a delicate maang tikka, matching earrings, and a small nose ring. Soft, glowing golden hour light illuminates the scene, showcasing natural skin texture with subtle film grain. The background is a soft-focus elegant palace corridor. Shot on 35mm film, Kodak Portra 400, authentic analog photography style.""",
@@ -34,7 +35,7 @@ PERFECT_FACE_PROMPTS = [
 ]
 
 # ============================================
-# REAL PHOTO & DETAIL ENHANCER (CGI और प्लास्टिक लुक हटाने के लिए)
+# REAL PHOTO & DETAIL ENHANCER
 # ============================================
 PHOTO_ENHANCE = """
 , perfect facial symmetry, highly detailed eyes, natural skin texture with visible pores, subtle film grain, perfectly matched symmetrical identical earrings, natural soft fabric draping, realistic clothing folds with accurate physics, shot on 35mm film, analog photography, authentic photo, no CGI, no 3D render, no plastic look
@@ -44,9 +45,7 @@ PHOTO_ENHANCE = """
 # SMART CAPTION GENERATOR
 # ============================================
 def generate_trending_caption():
-    """समय के अनुसार स्मार्ट कैप्शन बनाएं"""
     hour = datetime.now().hour
-    
     if 6 <= hour < 12:
         time_text = "🌅 Good Morning! Today's trending beauty"
     elif 12 <= hour < 17:
@@ -75,53 +74,62 @@ def generate_trending_caption():
 
 #AIGirl #FashionTrends #IndianFashion #ViralPost #OOTD #StyleGoals #AICreation #Explore #TrendingNow"""
     ]
-    
     return random.choice(captions)
 
 # ============================================
-# 🎨 GENERATE IMAGE FROM HUGGING FACE
+# 🎨 GENERATE IMAGE WITH AUTO-BYPASS
 # ============================================
-def generate_flux_image(prompt_text, filename="temp_output.jpg"):
-    """Hugging Face API से FLUX.1-schnell मॉडल के जरिए इमेज बनाएं"""
-    print("🎨 Generating High Quality Image via Hugging Face...")
+def generate_flux_image_with_bypass(prompt_text, filename="temp_output.jpg"):
+    """पहले Hugging Face का प्रयास करें, फेल होने पर Pollinations.ai FLUX बाईपास पर जाएं"""
     
+    # 1. पहला प्रयास: Hugging Face API
+    print("🎨 Attempting Primary Engine: Hugging Face (FLUX.1-schnell)...")
     API_URL = "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell"
     headers = {"Authorization": f"Bearer {HF_TOKEN}"}
-    
     payload = {
         "inputs": prompt_text,
-        "parameters": {
-            "width": 1080,
-            "height": 1350
-        }
+        "parameters": {"width": 1080, "height": 1350}
     }
     
-    for attempt in range(3):
-        try:
-            response = requests.post(API_URL, headers=headers, json=payload, timeout=90)
-            
-            if response.status_code == 200:
-                with open(filename, 'wb') as f:
-                    f.write(response.content)
-                print("✅ Image generated and saved locally!")
-                return filename
-            elif response.status_code == 503:
-                print("⏳ Model is loading on Hugging Face, waiting 15 seconds...")
-                time.sleep(15)
-            else:
-                print(f"⚠️ Hugging Face Error ({response.status_code}): {response.text}")
-                break
-        except Exception as e:
-            print(f"⚠️ Request Failed: {e}")
-            time.sleep(5)
-            
+    try:
+        response = requests.post(API_URL, headers=headers, json=payload, timeout=30)
+        if response.status_code == 200:
+            with open(filename, 'wb') as f:
+                f.write(response.content)
+            print("✅ Successfully generated via Hugging Face!")
+            return filename
+    except Exception as e:
+        print(f"⚠️ Hugging Face Connection Failed: {e}")
+        
+    # 2. बैकअप बाईपास: Pollinations FLUX Engine (यह कभी ब्लॉक नहीं होता)
+    print("🚀 Primary Engine blocked/failed. Activating Bypass Engine: Pollinations.ai (FLUX)...")
+    encoded_prompt = urllib.parse.quote(prompt_text.strip())
+    bypass_url = (
+        f"https://image.pollinations.ai/prompt/{encoded_prompt}"
+        f"?width=1080&height=1350"
+        f"&model=flux"
+        f"&nologo=true"
+        f"&seed={random.randint(1, 9999999)}"
+    )
+    
+    try:
+        response = requests.get(bypass_url, timeout=60)
+        if response.status_code == 200:
+            with open(filename, 'wb') as f:
+                f.write(response.content)
+            print("✅ Successfully generated via Pollinations FLUX Bypass!")
+            return filename
+        else:
+            print(f"❌ Bypass Engine also failed with status: {response.status_code}")
+    except Exception as e:
+        print(f"❌ Bypass Engine connection error: {e}")
+        
     return None
 
 # ============================================
 # 📤 POST DIRECT IMAGE FILE TO FACEBOOK
 # ============================================
 def post_local_file_to_facebook(image_path, caption):
-    """फेसबुक ग्राफ एपीआई का उपयोग करके इमेज फ़ाइल अपलोड करें"""
     print("📤 Uploading direct image file to Facebook...")
     fb_url = f"https://graph.facebook.com/{PAGE_ID}/photos"
     
@@ -133,9 +141,7 @@ def post_local_file_to_facebook(image_path, caption):
     
     try:
         with open(image_path, 'rb') as img_file:
-            files = {
-                'source': img_file
-            }
+            files = {'source': img_file}
             response = requests.post(fb_url, data=payload, files=files, timeout=120)
             
         if response.status_code == 200:
@@ -153,18 +159,18 @@ def post_local_file_to_facebook(image_path, caption):
 # 🎯 COMPLETE WORKFLOW
 # ============================================
 def trending_girl_bot():
-    """मुख्य वर्कफ़्लो"""
-    if not PAGE_ID or not ACCESS_TOKEN or not HF_TOKEN:
-        print("❌ ERROR: Required secrets are missing!")
+    if not PAGE_ID or not ACCESS_TOKEN:
+        print("❌ ERROR: Facebook credentials (PAGE_ID / ACCESS_TOKEN) are missing!")
         return False
         
     base_prompt = random.choice(PERFECT_FACE_PROMPTS)
     final_prompt = base_prompt + PHOTO_ENHANCE
     
-    local_image = generate_flux_image(final_prompt)
+    # बाईपास इंजन के साथ इमेज बनाएं
+    local_image = generate_flux_image_with_bypass(final_prompt)
     
     if not local_image:
-        print("❌ Image generation failed!")
+        print("❌ Image generation failed on both Engines!")
         return False
         
     caption = generate_trending_caption()
@@ -174,7 +180,7 @@ def trending_girl_bot():
         os.remove(local_image)
         
     if post_id:
-        print("🎉 Successfully completed!")
+        print("🎉 Workflow successfully completed!")
         return True
     return False
 
