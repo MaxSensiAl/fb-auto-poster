@@ -13,27 +13,27 @@ PAGE_ID = os.environ.get("FB_PAGE_ID")
 ACCESS_TOKEN = os.environ.get("FB_ACCESS_TOKEN")
 
 # ============================================
-# TOKEN REFRESH FUNCTION
+# TOKEN REFRESH FUNCTION (CORRECTED FOR PAGE TOKEN)
 # ============================================
 def refresh_token_if_needed():
     """Check and refresh token if expired"""
     
     global ACCESS_TOKEN
     
-    if not ACCESS_TOKEN:
-        print("❌ No access token found!")
+    if not ACCESS_TOKEN or not PAGE_ID:
+        print("❌ No access token or Page ID found!")
         return False
     
-    # Test current token
-    test_url = f"https://graph.facebook.com/me?access_token={ACCESS_TOKEN}"
+    # सुधार: यहाँ 'me' के बजाय '{PAGE_ID}' का उपयोग किया गया है
+    test_url = f"https://graph.facebook.com/{PAGE_ID}?access_token={ACCESS_TOKEN}"
     try:
         response = requests.get(test_url, timeout=10)
         
         if response.status_code == 200:
             print("✅ Token is valid!")
             return True
-        elif "Session has expired" in response.text:
-            print("⚠️ Token expired! Please update GitHub Secret.")
+        elif "Session has expired" in response.text or "OAuthException" in response.text:
+            print("⚠️ Token expired or invalid! Please update GitHub Secret.")
             print("📌 Get new token from Facebook Developer Console")
             return False
         else:
@@ -166,7 +166,7 @@ def post_high_quality_ai_image():
     ===================================================
     AI FASHION POSTER PRO - HIGH QUALITY
     10X Better Quality Images
-    Powered by SDXL + Canon EOS R5
+    Powered by FLUX Model
     ===================================================
     """)
     
@@ -179,13 +179,13 @@ def post_high_quality_ai_image():
     # 3. Generate smart caption
     caption = get_smart_caption()
     
-    # 4. Create high quality URL
+    # 4. Create high quality URL with FLUX Model
     encoded_prompt = urllib.parse.quote(prompt)
     
     ai_image_url = (
         f"https://image.pollinations.ai/prompt/{encoded_prompt}"
-        f"?width=1920&height=1080"
-        f"&model=sdxl"
+        f"?width=1080&height=1350"
+        f"&model=flux"
         f"&nologo=true"
         f"&seed={random.randint(1, 999999)}"
     )
@@ -199,8 +199,8 @@ def post_high_quality_ai_image():
     Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
     Day: {datetime.now().strftime('%A')}
     
-    Model: SDXL (Best Quality)
-    Resolution: 1920x1080 Full HD
+    Model: FLUX (Highest Quality)
+    Resolution: 1080x1350 Portrait HD
     Camera: Canon EOS R5 + 85mm Lens
     Lighting: Studio Lighting + Golden Hour
     
@@ -234,7 +234,7 @@ def post_high_quality_ai_image():
     ✅ POST SUCCESSFUL!
     Post ID: {post_id}
     Viral Score: {viral_score}%
-    Quality: 10X Improved!
+    Quality: FLUX HD!
     ===================================================
             """)
             return True
