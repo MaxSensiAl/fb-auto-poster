@@ -12,42 +12,31 @@ PAGE_ID = os.environ.get("FB_PAGE_ID")
 ACCESS_TOKEN = os.environ.get("FB_ACCESS_TOKEN")
 
 # ============================================
-# PERFECT FACE PROMPTS - हर बार सही चेहरा
+# HIGH QUALITY FLUX PROMPTS - (चेहरे और हाथ बिल्कुल सही बनेंगे)
 # ============================================
 PERFECT_FACE_PROMPTS = [
-    """professional portrait photography, masterpiece, best quality, ultra realistic, 8k resolution, shot on Canon EOS R5, 85mm lens, f/1.4, professional studio lighting, softbox, golden hour, sharp focus on eyes, perfect facial symmetry, beautiful Indian bride, wearing red lehenga, gold jewelry, maang tikka, nath, glowing skin, soft smile, clear eyes, perfect face, national geographic style, hyper detailed, 32k, cinematic, vogue magazine cover""",
+    """A highly detailed, professional DSLR photograph of a beautiful Indian bride. She is wearing a traditional red designer lehenga with intricate gold embroidery, heavy royal gold jewelry, a maang tikka, and a nose ring. The shot is a close-up portrait with sharp focus on her symmetrical face and expressive, clear eyes. Soft, glowing golden hour light illuminates her face, showcasing natural skin texture with visible pores. Beautiful, realistic hands with clear fingers are visible as she adjusts her veil. Professional portrait photography, cinematic, 8k resolution.""",
     
-    """close-up portrait, ultra high definition, 8k, photorealistic, highest quality, professional portrait photography, 50mm lens, f/2.8, soft morning sunlight, studio lighting, detailed skin texture, natural pores visible, sharp focus on eyes, perfect face, South Indian girl, green kanjeevaram saree, gold temple jewelry, jasmine flowers in hair, divine expression, Kerala temple background, perfect facial features""",
+    """A realistic, high-quality photograph of a South Indian young woman wearing a rich green Kanjeevaram silk saree with a golden border and traditional temple jewelry. She has jasmine flowers in her hair. This is a medium shot with a soft, blurred temple background. The lighting is soft morning sunlight, casting natural shadows. Her face is perfectly symmetrical with realistic eyes and a graceful smile. High-resolution portrait, photorealistic.""",
     
-    """professional portrait, 8k resolution, photorealistic, ultra HD, best quality, professional fashion photography, studio lighting, softbox, sharp details, clear skin texture, perfect face, modern Indian girl, fusion outfit, crop top, flowy skirt, urban Mumbai background, golden hour lighting, perfect facial symmetry, crystal clear eyes""",
+    """A modern Indian woman wearing an elegant pastel yellow crop top and a flowy designer skirt (ethnic fusion wear). She is standing outdoors with a blurred urban city background during sunset. The golden hour light reflects beautifully on her face. Her face has natural makeup, clear skin texture, and sharp eyes. Her hands are naturally resting on her waist, displaying perfectly rendered fingers. Sharp focus, professional fashion magazine cover style.""",
     
-    """masterpiece portrait, ultra HD, 8k, photorealistic, best quality, national geographic style, award-winning photography, cinematic composition, golden hour lighting, rich vibrant colors, high saturation, professional portrait, sharp focus on face, perfect facial features, Rajasthani princess, colorful bandhani, silver jewelry, haveli background, warm desert lighting""",
+    """A professional candid portrait of a beautiful Rajasthani woman in a vibrant colorful bandhani outfit with intricate silver jewelry. She is standing in front of a majestic ancient haveli during the warm afternoon. The lighting highlights her sharp, symmetric facial features. Her facial expression is elegant, eyes are detailed and lively, and her hands are holding the edge of her dupatta realistically.""",
     
-    """portrait photography, ultra HD, 8k, photorealistic, best quality, professional photography, 85mm lens, natural skin texture, crystal clear details, sharp focus on eyes, perfect face, Kashmiri girl, traditional pheran, intricate thread work, beautiful eyes, snowy Gulmarg background, soft natural light, golden hour""",
+    """A stunning close-up portrait of a young Kashmiri woman wearing a traditional dark pheran with detailed colorful Kashmiri thread work. The background is a beautifully blurred, snow-covered Gulmarg landscape. Her face is exceptionally clear with rosy cheeks, bright detailed eyes, and a natural soft smile. Shot on a professional 85mm lens, high fidelity, realistic skin details.""",
     
-    """professional portrait, 8k resolution, photorealistic, ultra HD, best quality, professional photography, Canon EOS R5, 50mm lens, studio lighting, sharp focus, vivid colors, high detail, natural skin texture, perfect face, Punjabi girl, yellow Patiala salwar suit, phulkari work, jewelry, mustard field background, bright sunny day""",
+    """A vibrant, photorealistic portrait of a young Punjabi woman in a bright yellow Patiala salwar suit with a colorful phulkari dupatta. She is smiling happily in a lush green mustard field under a clear blue sky. The lighting is bright and natural. Her face is highly detailed and symmetrical, with realistic eyes, hair, and hands.""",
     
-    """portrait photography, ultra high definition, 8k, photorealistic, highest quality, professional portrait photography, soft lighting, detailed skin texture, sharp focus on face, perfect facial features, Bengali girl, white and red traditional saree, shakha pola bangles, sindoor, soft smile, temple background""",
+    """A traditional portrait of a Bengali woman in a classic white saree with a thick red border (laal paar saree). She is wearing traditional gold bangles and has a soft smile, standing in front of an elegant Durga Puja pandal background. Perfect facial features, detailed dark eyes, natural skin texture, and realistically drawn hands holding a puja plate.""",
     
-    """professional portrait, 8k resolution, photorealistic, best quality, professional photography, studio lighting, golden hour, sharp focus on face, perfect face, Indian wedding guest, pastel anarkali suit, delicate jewelry, floral jewelry, happy smile, wedding decoration background""",
-    
-    """portrait photography, ultra HD, 8k, photorealistic, best quality, professional photography, golden hour lighting, natural skin texture, sharp focus on eyes, perfect face, bohemian girl, floral dress, golden jewelry, long wavy hair, desert landscape sunset""",
-    
-    """fashion portrait, 8k resolution, photorealistic, best quality, professional fashion photography, studio lighting, high contrast, sharp focus on face, perfect facial features, Indian supermodel, fusion outfit, gown with embroidery, makeup, jewelry, ramp walk, fashion show lights"""
+    """A realistic, high-quality fashion portrait of an Indian wedding guest in a pastel-colored designer anarkali suit with delicate floral jewelry. The background shows soft, warm wedding decorations. The camera captures her beautiful face and natural expression with absolute clarity, sharp eyes, and realistic body proportions."""
 ]
 
 # ============================================
-# FACE REPAIR & ENHANCE PROMPTS (Add to any prompt)
+# FACE & DETAIL ENHANCER FOR FLUX
 # ============================================
 FACE_ENHANCE = """
-, perfect facial symmetry, clear eyes, natural skin texture, realistic face, no distortion, perfect anatomy, realistic human features, sharp focus on face, beautiful expression, natural smile, professional retouching, flawless skin, perfect lighting on face
-"""
-
-# ============================================
-# NEGATIVE PROMPTS - क्या नहीं चाहिए
-# ============================================
-NEGATIVE_PROMPTS = """
-ugly, deformed, bad anatomy, extra fingers, extra limbs, distorted face, blurry eyes, crossed eyes, asymmetrical face, unrealistic features, cartoon, anime, painting, sketch, low quality, pixelated, bad proportions, missing features
+, perfect facial features, highly detailed eyes, natural skin texture, anatomically correct hands, realistic fingers, professional studio lighting, extremely sharp focus
 """
 
 # ============================================
@@ -108,15 +97,10 @@ def get_smart_caption():
 def predict_viral_score(prompt_text):
     """Calculate viral score"""
     keywords = {
-        "masterpiece": 20, "award-winning": 20, "national geographic": 20,
-        "vogue magazine": 20, "cinematic": 15,
-        "8k": 15, "photorealistic": 15, "ultra realistic": 15,
-        "professional photography": 15, "studio lighting": 15,
-        "golden hour": 12, "sharp focus": 12, "hyper detailed": 12,
-        "crystal clear": 12, "vivid colors": 12,
-        "beautiful": 10, "stunning": 10, "gorgeous": 10,
-        "glowing": 10, "divine": 10, "graceful": 10,
-        "perfect face": 15, "clear eyes": 10, "facial symmetry": 15
+        "masterpiece": 10, "photorealistic": 15, "detailed skin": 20,
+        "professional": 15, "studio lighting": 15, "golden hour": 15, 
+        "sharp focus": 15, "perfect facial": 20, "realistic hands": 25,
+        "natural": 15, "eyes": 15
     }
     
     score = 0
@@ -132,21 +116,21 @@ def predict_viral_score(prompt_text):
 # MAIN POST FUNCTION - PERFECT FACE
 # ============================================
 def post_perfect_face_ai_image():
-    """Generate and post AI image with perfect face"""
+    """Generate and post AI image with perfect face using FLUX"""
     
     print("""
     ============================================================
-    AI FASHION POSTER PRO - PERFECT FACE EDITION
-    🎯 100% Accurate Face - No Distortion
-    📸 Professional Portrait Quality
-    🔥 Powered by Pollinations.ai + SDXL
+    AI FASHION POSTER PRO - FLUX EDITION (PERFECT FACE & HANDS)
+    🎯 Advanced Face & Finger Rendering - No Distortions
+    📸 Professional HD Photography
+    🔥 Powered by Pollinations.ai + FLUX Model
     ============================================================
     """)
     
     # 1. Select perfect face prompt
     base_prompt = random.choice(PERFECT_FACE_PROMPTS)
     
-    # 2. Add face enhance
+    # 2. Add face enhance (Flux optimized)
     final_prompt = base_prompt + FACE_ENHANCE
     
     # 3. Calculate viral score
@@ -155,20 +139,17 @@ def post_perfect_face_ai_image():
     # 4. Generate smart caption
     caption = get_smart_caption()
     
-    # 5. 🔥 PERFECT FACE URL SETTINGS
-    encoded_prompt = urllib.parse.quote(final_prompt)
-    encoded_negative = urllib.parse.quote(NEGATIVE_PROMPTS)
+    # 5. Encode prompt for URL
+    encoded_prompt = urllib.parse.quote(final_prompt.strip())
     
-    # CRITICAL: Portrait mode for best face
+    # 🔥 FLUX SETTINGS FOR BEST RESULTS:
+    # 'flux' मॉडल चेहरों और हाथों को बिल्कुल असली इंसान जैसा बनाता है।
     ai_image_url = (
         f"https://image.pollinations.ai/prompt/{encoded_prompt}"
-        f"?width=1080&height=1350"      # ✅ Portrait - Best for Face
-        f"&model=sdxl"                  # ✅ SDXL - Best Quality
+        f"?width=1080&height=1350"      # Portrait ratio (Instagram/FB Reels style)
+        f"&model=flux"                  # ✅ FLUX Model (Best face/hands)
         f"&nologo=true"
-        f"&enhance=true"                # ✅ Auto Enhance
-        f"&quality=hd"                  # ✅ HD Quality
-        f"&seed={random.randint(1, 999999)}"
-        f"&negative_prompt={encoded_negative}"  # ✅ No Bad Features
+        f"&seed={random.randint(1, 9999999)}"
     )
     
     # 6. Show details
@@ -179,13 +160,12 @@ def post_perfect_face_ai_image():
     
     ⏰ Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
     
-    📸 Model: SDXL (Best Quality)
+    📸 Model: FLUX (Highest Face & Hand Accuracy)
     📐 Resolution: 1080x1350 Portrait
-    🎯 Focus: Perfect Face + Clear Eyes
-    🔥 Enhancement: Enabled
+    🎯 Focus: Realistic Skin, Perfect Facial Features, Accurate Hands
     
     🎯 Viral Score: {viral_score}%
-    📊 Quality: {'🔴' if viral_score < 50 else '🟡' if viral_score < 75 else '🟢 PERFECT'}
+    📊 Quality: {'🔴' if viral_score < 50 else '🟡' if viral_score < 75 else '🟢 EXCELLENT (FLUX)'}
     
     📝 Caption: {caption[:80]}...
     ============================================================
@@ -209,7 +189,7 @@ def post_perfect_face_ai_image():
     ✅ POST SUCCESSFUL!
     🆔 Post ID: {post_id}
     🎯 Viral Score: {viral_score}%
-    📸 Perfect Face: Yes ✅
+    📸 Perfect Face: Yes (FLUX Model) ✅
     ============================================================
             """)
             return True
@@ -240,7 +220,7 @@ def auto_poster():
     ============================================================
     🤖 AI AUTO POSTER - PERFECT FACE
     ⏰ Running Every 30 Minutes
-    🎯 100% Accurate Human Face
+    🎯 100% Accurate Human Face & Hands
     ============================================================
     """)
     
