@@ -27,99 +27,82 @@ print(f"✅ Target: @{TARGET_PROFILE}")
 print(f"✅ Facebook Page: {FB_PAGE_ID[:3]}***")
 
 # ============================================
-# 🎨 MULTIPLE PROMPTS (बेहतर चेहरे और क्वालिटी के लिए)
+# 🎨 MULTIPLE PROMPTS (फुल-बॉडी तस्वीरों के लिए)
 # ============================================
 
 PROMPTS = [
-    # 1. Traditional Indian Bride
+    # 1. Traditional Indian Bride (Full Body)
     """
-    A stunning high-quality portrait of an Indian bride, 
-    highly detailed symmetrical facial features, realistic clear eyes, 
-    natural skin texture, sharp focus on face.
-    Traditional red bridal wear with gold embroidery.
-    Beautiful jewelry, maang tikka, and earrings.
-    Soft golden hour lighting, dreamy background.
-    8k resolution, photorealistic, professional.
-    Canon EOS R5, 85mm lens, f/1.4.
-    Same face, same character.
+    A stunning full-body portrait of an Indian bride standing gracefully, 
+    complete head-to-toe shot showing the entire traditional red bridal lehenga with intricate gold embroidery.
+    Symmetrical facial features, detailed clear eyes, natural skin texture.
+    Beautiful jewelry, maang tikka, and elegant hand pose.
+    Soft golden hour lighting in a heritage palace background.
+    8k resolution, photorealistic, professional fashion photography, sharp focus.
     """,
     
-    # 2. Modern Bollywood Style
+    # 2. Modern Bollywood Style (Full Length)
     """
-    A glamorous Bollywood actress portrait, 
-    symmetrical facial features, detailed eyes, natural skin structure.
-    Modern fusion wear with intricate detailing.
-    Studio lighting with soft shadows.
-    Professional makeup, perfect skin texture.
-    High fashion editorial style.
-    Sony A7R IV, 50mm lens, f/1.8.
-    Cinematic, dramatic, stunning.
+    A glamorous full-length fashion editorial shot of a Bollywood actress, 
+    standing pose showing her complete modern fusion gown, elegant design.
+    Symmetrical facial features, detailed eyes, natural skin.
+    Studio lighting with soft shadows, professional high-fashion pose.
+    Sony A7R IV, 35mm lens, sharp focus from head to toe, dramatic look.
     """,
     
-    # 3. South Indian Beauty
+    # 3. South Indian Beauty (Knee-Up/Full Body)
     """
-    A traditional South Indian woman in silk saree, 
-    highly detailed symmetrical face, clear eyes, natural skin.
-    Rich kanjivaram saree with gold border.
-    Temple jewelry, jasmine flowers in hair.
-    Natural sunlight, temple architecture background.
-    Authentic, cultural, beautiful, sharp focus on face.
-    Nikon Z9, 85mm lens.
-    Vibrant colors, sharp details.
+    A beautiful full-body portrait of a South Indian woman standing gracefully, 
+    wearing a rich kanjivaram silk saree with a traditional gold border, 
+    saree draping visible from head to toe.
+    Temple jewelry, jasmine flowers in hair, warm natural sunlight.
+    Symmetrical face, sharp details, heritage temple architecture background.
+    Nikon Z9, professional composition.
     """,
     
-    # 4. Royal Rajasthani Style
+    # 4. Royal Rajasthani Style (Full Body)
     """
-    A royal Rajasthani woman in traditional attire, 
-    clear symmetrical facial features, highly detailed eyes, realistic look.
-    Bandhani dupatta, heavy silver jewelry.
-    Desert palace background, golden hour.
-    Regal, elegant, majestic, sharp focus.
-    Leica M11, 50mm Summilux.
-    Warm tones, rich textures.
+    A regal Rajasthani woman standing in a heritage palace courtyard, 
+    full-body shot displaying her complete traditional ghoonghat and heavy silver-embroidered lehenga.
+    Bandhani dupatta draping, royal jewelry, golden hour lighting.
+    Symmetrical face, majestic pose, warm desert tones.
+    Leica M11, sharp focus, rich details.
     """,
     
-    # 5. Modern Minimalist
+    # 5. Modern Minimalist (Full Body)
     """
     A modern Indian woman in minimalist style, 
-    symmetrical face, natural skin texture, highly detailed facial features.
-    Simple elegant outfit, subtle jewelry.
-    Clean white background, soft natural light.
-    Contemporary, fresh, sophisticated.
-    Professional headshot quality, sharp focus on face.
+    full-length standing portrait showing a simple elegant modern pastel saree.
+    Symmetrical face, clean natural skin, subtle jewelry.
+    Clean minimalist aesthetic background, soft natural light, contemporary sophisticated look.
+    Professional photography, sharp focus on the whole body.
     """,
     
-    # 6. Festival Special
+    # 6. Festival Special (Full Body)
     """
-    An Indian woman celebrating Diwali, 
-    happy expression, symmetrical facial features, clear realistic eyes.
-    Traditional lehenga with mirror work.
-    Diya background, festive lighting.
-    Joyful expression, vibrant colors, sharp focus on face.
-    Canon EOS R3, 24-70mm lens.
-    Festive, warm, celebratory.
+    A joyful Indian woman celebrating Diwali, 
+    full-body standing pose showing her entire mirror-work lehenga.
+    Festive lighting, diyas glowing on the ground around her feet.
+    Symmetrical face, happy expression, vibrant colors.
+    Canon EOS R3, sharp focus from head to toe, celebratory atmosphere.
     """,
     
-    # 7. Wedding Guest Look
+    # 7. Wedding Guest Look (Full Body)
     """
-    A beautiful woman in wedding guest attire, 
-    highly detailed symmetrical face, natural skin, realistic features.
-    Elegant saree or lehenga.
-    Soft romantic lighting.
-    Floral background, dreamy atmosphere, sharp focus on face.
-    Professional wedding photography style.
-    Rich colors, soft bokeh.
+    A beautiful Indian woman in wedding guest attire, 
+    full-length standing shot showing her elegant designer anarkali suit or lehenga.
+    Symmetrical facial features, natural skin, soft romantic lighting.
+    Dreamy floral background, soft bokeh around her feet.
+    Professional wedding photography style, rich details.
     """,
     
-    # 8. Kashmiri Beauty
+    # 8. Kashmiri Beauty (Full Length)
     """
-    A Kashmiri woman in traditional pheran, 
-    highly detailed symmetrical face, clear eyes, natural realistic skin.
-    Snow-capped mountains background.
-    Natural winter lighting, sharp focus on face.
-    Authentic, cultural, serene.
-    Nikon D850, 70-200mm lens.
-    Crystal clear, sharp focus.
+    A Kashmiri woman standing elegantly, 
+    full-body portrait wearing a traditional embroidered long pheran, 
+    snow-capped mountains and chinar trees background.
+    Natural winter sunlight, symmetric face, serene pose.
+    Nikon D850, crystal clear sharp focus, realistic textures.
     """
 ]
 
@@ -153,18 +136,17 @@ def learn_style_from_instagram():
 
 def generate_ai_image(prompt_text, filename="generated_photo.jpg"):
     """
-    FLUX AI से हाई-क्वालिटी फोटो जनरेट करें
+    FLUX AI से हाई-क्वालिटी फुल-बॉडी फोटो जनरेट करें
     """
     print("🎨 AI से High Quality फोटो बना रहा हूँ...")
     
-    # सरल और साफ प्रॉम्प्ट
     clean_prompt = prompt_text.strip().replace('\n', ' ').replace('  ', ' ')
-    encoded_prompt = urllib.parse.quote(clean_prompt[:200])
+    encoded_prompt = urllib.parse.quote(clean_prompt[:250])
     
-    # ✅ चेहरे की स्पष्टता के लिए स्थिर रिज़ॉल्यूशन (1024x1280) का उपयोग
+    # ✅ फुल-बॉडी के लिए आस्पेक्ट रेशियो 1024x1536 (2:3 Ratio) किया गया
     flux_url = (
         f"https://image.pollinations.ai/prompt/{encoded_prompt}"
-        f"?width=1024&height=1280"  # ✅ चेहरे की विकृति को रोकने के लिए सुधरा हुआ आकार
+        f"?width=1024&height=1536"  # ✅ फुल-बॉडी के लिए बेहतरीन लंबाई
         f"&model=flux"
         f"&nologo=true"
         f"&seed={random.randint(1, 9999999)}"
@@ -204,16 +186,16 @@ def generate_ai_image_simple(filename="generated_photo.jpg"):
     print("🔄 सरल प्रॉम्प्ट के साथ Retry कर रहा हूँ...")
     
     simple_prompts = [
-        "Beautiful Indian bride in traditional red dress, symmetrical face, clear eyes, professional photography",
-        "Stunning Indian woman in saree, symmetrical facial features, realistic eyes, professional portrait",
-        "Glamorous Bollywood actress portrait, symmetrical face, professional photography, studio lighting",
-        "Elegant Indian woman in traditional jewelry, detailed face, soft lighting, professional photo"
+        "Stunning Indian bride, standing pose, full-body shot from head to toe, traditional red dress, professional photography",
+        "Beautiful Indian woman in saree, full-length standing portrait, detailed face, professional studio shot",
+        "Glamorous Bollywood actress, standing pose, full-body shot, elegant gown, fashion photography",
+        "Elegant Indian woman in traditional jewelry, full body shot, heritage architecture background"
     ]
     
     simple_prompt = random.choice(simple_prompts)
     encoded = urllib.parse.quote(simple_prompt)
     
-    url = f"https://image.pollinations.ai/prompt/{encoded}?width=1024&height=1280&model=flux&nologo=true&quality=high&enhance=true"
+    url = f"https://image.pollinations.ai/prompt/{encoded}?width=1024&height=1536&model=flux&nologo=true&quality=high&enhance=true"
     
     try:
         response = requests.get(url, timeout=180)
@@ -236,16 +218,16 @@ def create_placeholder_image(filename="placeholder.jpg"):
     try:
         from PIL import Image, ImageDraw, ImageFont
         
-        img = Image.new('RGB', (1024, 1280), color=(255, 200, 230))
+        img = Image.new('RGB', (1024, 1536), color=(255, 200, 230))
         draw = ImageDraw.Draw(img)
         
-        text = "✨ AI Beauty ✨"
+        text = "✨ AI Beauty Full Shot ✨"
         try:
             font = ImageFont.load_default()
         except:
             font = None
         
-        draw.text((400, 600), text, fill=(200, 50, 100), font=font)
+        draw.text((350, 700), text, fill=(200, 50, 100), font=font)
         img.save(filename)
         print(f"✅ Placeholder Image बन गई!")
         return filename
@@ -260,30 +242,28 @@ def create_placeholder_image(filename="placeholder.jpg"):
 
 def enhance_image_quality(image_path):
     """
-    Image Quality Enhance - संतुलित सेटिंग्स के साथ
+    Image Quality Enhance
     """
     try:
         from PIL import Image, ImageEnhance
         
         img = Image.open(image_path)
-        
-        # 1. Resolution Check
         width, height = img.size
         print(f"📐 Current Resolution: {width}x{height}")
         
-        if width < 1024 or height < 1280:
+        if width < 1024 or height < 1536:
             new_width = 1024
-            new_height = 1280
+            new_height = 1536
             print(f"📐 Resizing: {width}x{height} → {new_width}x{new_height}")
             img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
         
-        # 2. Sharpness Enhance (चेहरे की त्वचा को प्राकृतिक रखने के लिए इसे कम किया गया)
+        # 2. Sharpness Enhance (प्राकृतिक लुक बनाए रखने के लिए)
         enhancer = ImageEnhance.Sharpness(img)
-        img = enhancer.enhance(1.1)  # 10% Sharpness Increase (प्राकृतिक लुक के लिए)
+        img = enhancer.enhance(1.1)  
         
         # 3. Contrast Enhance
         enhancer = ImageEnhance.Contrast(img)
-        img = enhancer.enhance(1.05)  # 5% Contrast Increase
+        img = enhancer.enhance(1.05)  
         
         # 4. High Quality Save
         img.save(image_path, quality=95, optimize=True, format='JPEG')
@@ -301,71 +281,46 @@ def enhance_image_quality(image_path):
 
 def check_image_quality(image_path):
     """
-    Photo Quality Check - Resolution, Size, Format
+    Photo Quality Check
     """
     print("📷 Photo Quality Check कर रहा हूँ...")
-    
     try:
-        # Check if file exists
         if not os.path.exists(image_path):
             print("❌ File exists नहीं है!")
             return False
         
-        # File Size Check
         file_size = os.path.getsize(image_path)
         print(f"📊 File Size: {file_size/1024:.1f} KB")
         
-        if file_size < 10000:  # 10KB से कम
-            print("❌ File Size बहुत छोटी है! (< 10KB)")
+        if file_size < 10000:
+            print("❌ File Size बहुत छोटी है!")
             return False
         
-        if file_size < 50000:  # 50KB से कम - Warning
-            print("⚠️ File Size थोड़ी छोटी है ( < 50KB)")
-        
-        # Try to open with PIL
         try:
             from PIL import Image
             img = Image.open(image_path)
             width, height = img.size
             print(f"📐 Resolution: {width}x{height}")
             
-            # Resolution Check
             if width < 512 or height < 512:
-                print(f"❌ Resolution बहुत कम है! ({width}x{height})")
+                print(f"❌ Resolution बहुत कम है!")
                 return False
             
-            # Format Check
-            print(f"📁 Format: {img.format}")
-            
-            # Check if image is valid
             img.verify()
             print("✅ Image Valid है!")
-            
-            # Reopen after verify
-            img = Image.open(image_path)
-            
-            # Color Mode Check
-            print(f"🎨 Color Mode: {img.mode}")
-            
-            print("✅ Photo Quality Check Passed!")
             return True
             
         except ImportError:
-            print("⚠️ PIL installed नहीं है, basic check कर रहा हूँ...")
-            # Basic check without PIL
             if file_size > 10000:
-                print(f"✅ File Size ठीक है: {file_size/1024:.1f} KB")
                 return True
-            else:
-                print("❌ File Size बहुत छोटी है!")
-                return False
+            return False
                 
     except Exception as e:
         print(f"❌ Quality Check Error: {e}")
         return False
 
 # ============================================
-# 📝 3. CAPTION GENERATE करें (FIXED EMOJIS)
+# 📝 3. CAPTION GENERATE करें
 # ============================================
 
 def generate_caption():
@@ -385,7 +340,7 @@ def generate_caption():
     captions = [
         f"""{time_text}
 
-✨ AI Generated Perfect Look! 🤩
+✨ AI Generated Full Look! 🤩
 
 आपको कैसा लगा? 🤔
 👇 Comment में बताओ:
@@ -470,7 +425,6 @@ def post_to_facebook(image_path, caption):
 # ============================================
 
 def cleanup_files(*files):
-    """टेम्परेरी फ़ाइल्स डिलीट करें"""
     for file in files:
         if file and os.path.exists(file):
             try:
@@ -484,20 +438,16 @@ def cleanup_files(*files):
 # ============================================
 
 def main():
-    """पूरा बॉट चलाएं"""
-    
     print("\n" + "="*60)
-    print("🚀 INSTAGRAM STYLE AI BOT START")
+    print("🚀 INSTAGRAM STYLE AI BOT START (FULL BODY MODE)")
     print("="*60)
     
     start_time = time.time()
     
     try:
-        # STEP 1: Style Select (Instagram Skip)
+        # STEP 1: Style Select
         print("\n📸 STEP 1: Style Select...")
         style_prompt = learn_style_from_instagram()
-        
-        print(f"✅ Selected Style: {style_prompt[:100]}...")
         
         # STEP 2: AI से फोटो बनाएं
         print("\n🎨 STEP 2: AI से फोटो बना रहा हूँ...")
@@ -507,26 +457,21 @@ def main():
             print("❌ फोटो नहीं बन पाई!")
             return False
         
-        # ✅ STEP 2.5: Photo Quality Check
+        # STEP 2.5: Photo Quality Check
         print("\n📷 STEP 2.5: Photo Quality Check...")
         quality_ok = check_image_quality(image_path)
         
         if not quality_ok:
-            print("⚠️ Quality Check Fail हुई! नई फोटो बना रहा हूँ...")
-            # Retry with simple prompt
+            print("⚠️ Quality Check Fail हुई! री-ट्राई कर रहा हूँ...")
             image_path = generate_ai_image_simple("retry_photo.jpg")
             if image_path:
-                # Check quality again
                 quality_ok = check_image_quality(image_path)
                 if not quality_ok:
-                    print("⚠️ Quality Check फिर Fail हुई! Placeholder use कर रहा हूँ...")
                     image_path = create_placeholder_image("placeholder_final.jpg")
         
         # STEP 3: कैप्शन बनाएं
         print("\n📝 STEP 3: कैप्शन बना रहा हूँ...")
         caption = generate_caption()
-        print(f"✅ कैप्शन तैयार ({len(caption)} अक्षर)")
-        print(f"📝 Caption Preview: {caption[:150]}...")
         
         # STEP 4: Facebook पर पोस्ट करें
         print("\n📤 STEP 4: Facebook पर पोस्ट कर रहा हूँ...")
@@ -534,7 +479,7 @@ def main():
         
         # STEP 5: क्लीनअप
         print("\n🧹 STEP 5: क्लीनअप...")
-        cleanup_files(image_path, "ref_post_1.jpg", "ref_post_2.jpg", "ref_post_3.jpg", "retry_photo.jpg", "placeholder_final.jpg")
+        cleanup_files(image_path, "retry_photo.jpg", "placeholder_final.jpg")
         
         elapsed = time.time() - start_time
         
