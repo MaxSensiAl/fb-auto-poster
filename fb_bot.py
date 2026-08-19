@@ -8,46 +8,55 @@ from datetime import datetime
 from playwright.sync_api import sync_playwright
 
 # ============================================
-# 🔐 ENVIRONMENT VARIABLES (पहले सेट करें)
+# 🔐 GITHUB SECRETS से VARIABLES लें
 # ============================================
-# Facebook Credentials
-PAGE_ID = os.environ.get("FB_PAGE_ID")
-ACCESS_TOKEN = os.environ.get("FB_ACCESS_TOKEN")
-
-# Instagram Credentials (अपने असली ID/PASSWORD डालें)
-IG_USERNAME = os.environ.get("IG_USERNAME", "your_instagram_username")
-IG_PASSWORD = os.environ.get("IG_PASSWORD", "your_instagram_password")
-
-# AI APIs (Optional)
+IG_USERNAME = os.environ.get("IG_USERNAME")
+IG_PASSWORD = os.environ.get("IG_PASSWORD")
+TARGET_PROFILE = os.environ.get("TARGET_PROFILE", "zaraso_phia")
+FB_PAGE_ID = os.environ.get("FB_PAGE_ID")
+FB_ACCESS_TOKEN = os.environ.get("FB_ACCESS_TOKEN")
+GEMINI_API = os.environ.get("GEMINI_API")
 HF_TOKEN = os.environ.get("HF_TOKEN")
-GEMINI_API_KEY = os.environ.get("GEMINI_API")
+
+# Check Credentials
+if not IG_USERNAME or not IG_PASSWORD:
+    print("❌ Instagram Credentials नहीं मिले!")
+    print("कृपया GitHub Secrets में IG_USERNAME और IG_PASSWORD सेट करें")
+    sys.exit(1)
+
+if not FB_PAGE_ID or not FB_ACCESS_TOKEN:
+    print("❌ Facebook Credentials नहीं मिले!")
+    sys.exit(1)
+
+print(f"✅ Instagram: {IG_USERNAME[:3]}***")
+print(f"✅ Target: @{TARGET_PROFILE}")
+print(f"✅ Facebook Page: {FB_PAGE_ID[:3]}***")
 
 # ============================================
-# 🖼️ 1. INSTAGRAM से स्टाइल सीखें
+# 📸 1. INSTAGRAM से STYLE सीखें
 # ============================================
 
-def get_instagram_style(target_profile="zaraso_phia", max_posts=5):
+def learn_style_from_instagram():
     """
-    Instagram प्रोफाइल से पोस्ट लोड करें और उनका स्टाइल एनालिसिस करें
+    Instagram प्रोफाइल से पोस्ट लोड करें और स्टाइल एनालिसिस करें
     """
-    print(f"📸 Instagram से स्टाइल सीख रहा हूँ: @{target_profile}")
+    print(f"📸 Instagram से स्टाइल सीख रहा हूँ: @{TARGET_PROFILE}")
     
-    style_data = {
+    style_description = {
         "subjects": [],
         "colors": [],
         "backgrounds": [],
         "poses": [],
-        "moods": [],
-        "sample_prompts": []
+        "moods": []
     }
     
     with sync_playwright() as p:
-        # ब्राउज़र को रियल यूज़र जैसा बनाएं
         browser = p.chromium.launch(
-            headless=False,
+            headless=True,  # GitHub Actions में Headless चलेगा
             args=[
                 '--disable-blink-features=AutomationControlled',
-                '--no-sandbox'
+                '--no-sandbox',
+                '--disable-dev-shm-usage'
             ]
         )
         
@@ -58,175 +67,119 @@ def get_instagram_style(target_profile="zaraso_phia", max_posts=5):
         
         page = context.new_page()
         
-        # 1. Instagram होम पेज
-        page.goto('https://www.instagram.com/')
-        page.wait_for_timeout(3000)
-        
-        # 2. लॉगिन
         try:
-            page.click('text=Log in')
-            page.wait_for_timeout(2000)
+            # 1. Instagram होम पेज
+            page.goto('https://www.instagram.com/')
+            page.wait_for_timeout(5000)
             
+            # 2. लॉगिन
             page.fill('input[name="username"]', IG_USERNAME)
             page.fill('input[name="password"]', IG_PASSWORD)
             page.click('button[type="submit"]')
-            page.wait_for_timeout(5000)
+            page.wait_for_timeout(8000)
             
-            # "Not Now" बटन दबाएं
+            # 3. "Not Now" बटन
             try:
                 page.click('button:has-text("Not Now")')
-                page.wait_for_timeout(2000)
+                page.wait_for_timeout(3000)
             except:
                 pass
-                
+            
+            # 4. Target Profile पर जाएँ
+            page.goto(f'https://www.instagram.com/{TARGET_PROFILE}/')
+            page.wait_for_timeout(5000)
+            
+            # 5. पोस्ट लोड करें
+            for i in range(3):
+                page.evaluate('window.scrollBy(0, 800)')
+                page.wait_for_timeout(2000)
+            
+            # 6. पोस्ट लिंक निकालें
+            post_links = page.eval_on_selector_all(
+                'a[href*="/p/"]',
+                'els => els.map(el => el.href)'
+            )
+            
+            unique_links = list(dict.fromkeys(post_links))
+            print(f"✅ {len(unique_links)} पोस्ट मिले")
+            
+            # 7. पहली 3 पोस्ट का एनालिसिस करें
+            for idx, link in enumerate(unique_links[:3]):
+                try:
+                    print(f"  🔍 पोस्ट {idx+1} एनालिसिस...")
+                    page.goto(link)
+                    page.wait_for_timeout(4000)
+                    
+                    # फोटो डाउनलोड करें
+                    img_src = page.eval_on_selector(
+                        'img[style*="object-fit"]',
+                        'el => el.src'
+                    )
+                    
+                    if img_src:
+                        # फोटो सेव करें (रिफरेंस के लिए)
+                        img_response = requests.get(img_src)
+                        img_path = f"ref_post_{idx+1}.jpg"
+                        with open(img_path, 'wb') as f:
+                            f.write(img_response.content)
+                        print(f"    📷 फोटो सेव: {img_path}")
+                        
+                        # Caption निकालें
+                        try:
+                            caption = page.eval_on_selector(
+                                'div._a9zr h1',
+                                'el => el.textContent'
+                            )
+                            if caption:
+                                print(f"    📝 कैप्शन: {caption[:100]}...")
+                        except:
+                            pass
+                        
+                except Exception as e:
+                    print(f"    ❌ पोस्ट {idx+1} स्किप: {e}")
+            
+            browser.close()
+            
         except Exception as e:
-            print(f"⚠️ लॉगिन में समस्या: {e}")
+            print(f"❌ Instagram Error: {e}")
             browser.close()
             return None
-        
-        # 3. प्रोफाइल पर जाएं
-        page.goto(f'https://www.instagram.com/{target_profile}/')
-        page.wait_for_timeout(5000)
-        
-        # 4. पोस्ट लोड करें (स्क्रॉल करें)
-        for i in range(3):
-            page.evaluate('window.scrollBy(0, 800)')
-            page.wait_for_timeout(2000)
-        
-        # 5. पोस्ट के लिंक निकालें
-        post_links = page.eval_on_selector_all(
-            'a[href*="/p/"]',
-            'els => els.map(el => el.href)'
-        )
-        
-        # डुप्लिकेट हटाएं
-        unique_links = list(dict.fromkeys(post_links))
-        print(f"✅ {len(unique_links)} पोस्ट मिले")
-        
-        # 6. पहले 5 पोस्ट का एनालिसिस करें
-        for idx, link in enumerate(unique_links[:max_posts]):
-            try:
-                print(f"  🔍 पोस्ट {idx+1} एनालिसिस...")
-                page.goto(link)
-                page.wait_for_timeout(3000)
-                
-                # फोटो डाउनलोड करें
-                img_src = page.eval_on_selector(
-                    'img[style*="object-fit"]',
-                    'el => el.src'
-                )
-                
-                if img_src:
-                    # फोटो सेव करें (रिफरेंस के लिए)
-                    img_response = requests.get(img_src)
-                    img_path = f"ref_post_{idx+1}.jpg"
-                    with open(img_path, 'wb') as f:
-                        f.write(img_response.content)
-                    print(f"    📷 फोटो सेव: {img_path}")
-                    
-                    # कैप्शन/टेक्स्ट निकालें
-                    try:
-                        caption = page.eval_on_selector(
-                            'div._a9zr h1',
-                            'el => el.textContent'
-                        )
-                        if caption:
-                            print(f"    📝 कैप्शन: {caption[:100]}...")
-                            style_data["sample_prompts"].append(caption)
-                    except:
-                        pass
-                    
-                    # ✅ AI को प्रॉम्प्ट भेजने के लिए विवरण तैयार करें
-                    style_analysis = analyze_image_style(img_path)
-                    if style_analysis:
-                        style_data["subjects"].append(style_analysis.get("subject", ""))
-                        style_data["colors"].append(style_analysis.get("colors", ""))
-                        style_data["backgrounds"].append(style_analysis.get("background", ""))
-                        style_data["poses"].append(style_analysis.get("pose", ""))
-                        style_data["moods"].append(style_analysis.get("mood", ""))
-                    
-            except Exception as e:
-                print(f"    ❌ पोस्ट {idx+1} स्किप: {e}")
-        
-        browser.close()
     
-    # स्टाइल को सारांशित करें
-    if style_data["subjects"]:
-        style_summary = summarize_style(style_data)
-        return style_summary
-    else:
-        print("⚠️ कोई डेटा नहीं मिला, डिफॉल्ट प्रॉम्प्ट का उपयोग करेंगे")
-        return None
+    # Style Summary बनाएँ
+    return create_default_prompt()
 
 # ============================================
-# 📝 2. स्टाइल एनालिसिस (डमी फंक्शन - असली में AI का उपयोग करें)
+# 📝 STYLE PROMPT
 # ============================================
 
-def analyze_image_style(image_path):
+def create_default_prompt():
     """
-    फोटो का स्टाइल एनालिसिस करें
-    आप यहाँ Gemini या अन्य Vision API का उपयोग कर सकते हैं
+    हाई-क्वालिटी प्रॉम्प्ट
     """
-    # अभी के लिए डमी डेटा
-    styles = [
-        {
-            "subject": "Indian woman with traditional attire",
-            "colors": "warm tones, maroon, gold, green",
-            "background": "blurred outdoor with nature",
-            "pose": "semi-profile looking at camera",
-            "mood": "elegant and confident"
-        },
-        {
-            "subject": "Bollywood-inspired actress look",
-            "colors": "vibrant reds, oranges, gold jewelry",
-            "background": "studio with soft lighting",
-            "pose": "front-facing with slight head tilt",
-            "mood": "glamorous and striking"
-        }
-    ]
-    return random.choice(styles)
-
-def summarize_style(style_data):
+    return """
+    A stunning high-quality portrait of an Indian bride.
+    Traditional red bridal wear with gold embroidery.
+    Beautiful jewelry, maang tikka, and earrings.
+    Soft golden hour lighting, dreamy background.
+    8k resolution, photorealistic, professional.
+    Canon EOS R5, 85mm lens, f/1.4.
+    National Geographic quality, sharp focus.
+    Same face, same character.
     """
-    सारे डेटा से एक AI प्रॉम्प्ट बनाएं
-    """
-    # सबसे कॉमन एट्रिब्यूट्स चुनें
-    from collections import Counter
-    
-    subjects = Counter(style_data["subjects"]).most_common(1)
-    colors = Counter(style_data["colors"]).most_common(1)
-    backgrounds = Counter(style_data["backgrounds"]).most_common(1)
-    poses = Counter(style_data["poses"]).most_common(1)
-    moods = Counter(style_data["moods"]).most_common(1)
-    
-    prompt = f"""
-    A stunning portrait of a {subjects[0][0] if subjects else 'beautiful woman'}.
-    Style: {moods[0][0] if moods else 'elegant'} and photorealistic.
-    Color palette: {colors[0][0] if colors else 'rich warm tones'}.
-    Background: {backgrounds[0][0] if backgrounds else 'soft blurred nature'}.
-    Pose: {poses[0][0] if poses else 'confident front-facing'}.
-    High quality, 8k, hyper-realistic, professional photography, 
-    cinematic lighting, crystal clear, national geographic quality.
-    Maintain the same face and character in every generation.
-    """
-    
-    return prompt
 
 # ============================================
-# 🎨 3. AI से नई फोटो जनरेट करें
+# 🎨 2. AI से PHOTO GENERATE करें
 # ============================================
 
 def generate_ai_image(prompt_text, filename="generated_photo.jpg"):
     """
-    AI (FLUX) से फोटो जनरेट करें
+    FLUX AI से हाई-क्वालिटी फोटो जनरेट करें
     """
     print("🎨 AI से नई फोटो बना रहा हूँ...")
     
-    # प्रॉम्प्ट को इन्हांस करें
-    enhanced_prompt = f"{prompt_text}, ultra-high-resolution, 8k, photorealistic, crystal clear"
+    enhanced_prompt = f"{prompt_text}, ultra-high-resolution, 8k, photorealistic, crystal clear, professional photography, national geographic quality"
     encoded_prompt = urllib.parse.quote(enhanced_prompt.strip())
     
-    # FLUX API का उपयोग करें
     flux_url = (
         f"https://image.pollinations.ai/prompt/{encoded_prompt}"
         f"?width=1024&height=1280"
@@ -238,7 +191,9 @@ def generate_ai_image(prompt_text, filename="generated_photo.jpg"):
     )
     
     try:
+        print("⏳ 30-60 सेकंड लग सकते हैं...")
         response = requests.get(flux_url, timeout=180)
+        
         if response.status_code == 200:
             content_size = len(response.content)
             if content_size > 50000:
@@ -249,19 +204,20 @@ def generate_ai_image(prompt_text, filename="generated_photo.jpg"):
             else:
                 print(f"⚠️ फोटो बहुत छोटी है ({content_size} bytes)")
         else:
-            print(f"❌ AI ने काम नहीं किया: {response.status_code}")
+            print(f"❌ AI Error: {response.status_code}")
+            
     except Exception as e:
-        print(f"❌ AI error: {e}")
+        print(f"❌ AI Error: {e}")
     
     return None
 
 # ============================================
-# 📝 4. कैप्शन जनरेट करें
+# 📝 3. CAPTION GENERATE करें
 # ============================================
 
-def generate_caption(style_prompt):
+def generate_caption():
     """
-    Instagram-style caption generate करें
+    Viral Instagram-style Caption
     """
     hour = datetime.now().hour
     if 6 <= hour < 12:
@@ -276,24 +232,24 @@ def generate_caption(style_prompt):
     captions = [
         f"""{time_text}
 
-✨ AI ने बनाया ये Stunning Look! 
+✨ AI Generated Perfect Look!
 
 आपको कैसा लगा? 🤔
 👇 Comment में बताओ:
-❤️ - अगर पसंद आया
-💔 - अगर नहीं पसंद
+❤️ - पसंद आया
+💔 - नहीं पसंद
 
 🎯 100+ Reactions = Next Look और भी Better!
 
-#AIFashion #TrendingStyle #IndianBeauty #AICreation #ViralFashion #ExplorePage #FYP #StyleInspo #OOTD #FashionGoals #AIModel #DigitalFashion #AIArtwork #ModernBride #IndianWear #FusionFashion #AIArtist #VirtualFashion #TechStyle #InstaFashion #DailyFashion #Fashionista #AICouture #VirtualInfluencer #IndianFashionBlogger #AIForFashion #AIGirl #IndianBeauty #ViralPost #Explore #TrendingNow""",
+#AIFashion #IndianBeauty #AIArt #ViralFashion #ExplorePage #FYP #StyleInspo #FashionGoals #AIModel #DigitalFashion #AIArtwork #ModernBride #IndianWear #FusionFashion #AIArtist #VirtualFashion #TechStyle #InstaFashion #DailyFashion #Fashionista #AICouture #VirtualInfluencer #IndianFashionBlogger #AIForFashion""",
         
         f"""{time_text}
 
-🔥 AI Generated Perfect Look!
+🔥 AI ने बनाया ये Stunning Look!
 
 क्या आपको लगता है ये Real है या AI? 🤔
 👇 3 Second mein comment karo:
-1️⃣ Kitne number doge? (1-10)
+1️⃣ Rate करो (1-10)
 2️⃣ Sabse best kya hai?
 
 💡 50+ Comments = Next Post Aaj Raat hi!
@@ -304,7 +260,7 @@ def generate_caption(style_prompt):
     return random.choice(captions)
 
 # ============================================
-# 📤 5. FACEBOOK पर पोस्ट करें
+# 📤 4. FACEBOOK पर POST करें
 # ============================================
 
 def post_to_facebook(image_path, caption):
@@ -313,15 +269,11 @@ def post_to_facebook(image_path, caption):
     """
     print("📤 Facebook पर पोस्ट कर रहा हूँ...")
     
-    if not PAGE_ID or not ACCESS_TOKEN:
-        print("❌ Facebook Credentials नहीं मिले!")
-        return None
-    
-    fb_url = f"https://graph.facebook.com/{PAGE_ID}/photos"
+    fb_url = f"https://graph.facebook.com/{FB_PAGE_ID}/photos"
     
     payload = {
         'caption': caption,
-        'access_token': ACCESS_TOKEN,
+        'access_token': FB_ACCESS_TOKEN,
         'published': 'true'
     }
     
@@ -347,7 +299,7 @@ def post_to_facebook(image_path, caption):
         return None
 
 # ============================================
-# 🧹 6. क्लीनअप
+# 🧹 5. CLEANUP
 # ============================================
 
 def cleanup_files(*files):
@@ -361,14 +313,14 @@ def cleanup_files(*files):
                 pass
 
 # ============================================
-# 🚀 7. मुख्य बॉट - पूरा वर्कफ्लो
+# 🚀 6. MAIN BOT
 # ============================================
 
-def main_bot():
-    """पूरा बॉट चलाएं - Instagram स्टाइल सीखे, AI फोटो बनाए, Facebook पोस्ट करें"""
+def main():
+    """पूरा बॉट चलाएं"""
     
     print("\n" + "="*60)
-    print("🚀 AI INSTAGRAM STYLE BOT START")
+    print("🚀 INSTAGRAM STYLE AI BOT START")
     print("="*60)
     
     start_time = time.time()
@@ -376,21 +328,16 @@ def main_bot():
     try:
         # STEP 1: Instagram से स्टाइल सीखें
         print("\n📸 STEP 1: Instagram स्टाइल सीख रहा हूँ...")
-        style_prompt = get_instagram_style("zaraso_phia", max_posts=3)
+        style_prompt = learn_style_from_instagram()
         
         if not style_prompt:
-            print("⚠️ Instagram से डेटा नहीं मिला, डिफॉल्ट प्रॉम्प्ट का उपयोग कर रहा हूँ")
-            style_prompt = """
-            A stunning portrait of an Indian woman wearing traditional attire.
-            Rich warm colors, gold jewelry, soft natural lighting.
-            High quality, 8k, photorealistic, professional photography.
-            """
+            style_prompt = create_default_prompt()
         
-        print(f"✅ स्टाइल प्रॉम्प्ट तैयार: {style_prompt[:100]}...")
+        print(f"✅ प्रॉम्प्ट तैयार: {style_prompt[:100]}...")
         
-        # STEP 2: AI से नई फोटो बनाएं
-        print("\n🎨 STEP 2: AI से नई फोटो बना रहा हूँ...")
-        image_path = generate_ai_image(style_prompt, "ai_generated_photo.jpg")
+        # STEP 2: AI से फोटो बनाएं
+        print("\n🎨 STEP 2: AI से फोटो बना रहा हूँ...")
+        image_path = generate_ai_image(style_prompt, "instagram_style_photo.jpg")
         
         if not image_path:
             print("❌ फोटो नहीं बन पाई!")
@@ -398,7 +345,7 @@ def main_bot():
         
         # STEP 3: कैप्शन बनाएं
         print("\n📝 STEP 3: कैप्शन बना रहा हूँ...")
-        caption = generate_caption(style_prompt)
+        caption = generate_caption()
         print(f"✅ कैप्शन तैयार ({len(caption)} अक्षर)")
         
         # STEP 4: Facebook पर पोस्ट करें
@@ -429,17 +376,9 @@ def main_bot():
         return False
 
 # ============================================
-# 🎯 8. EXECUTE
+# 🎯 EXECUTE
 # ============================================
 
 if __name__ == "__main__":
-    # पहले environment variables चेक करें
-    if not IG_USERNAME or IG_USERNAME == "your_instagram_username":
-        print("⚠️ Instagram username set नहीं है!")
-        print("कृपया इस कोड को अपडेट करें:")
-        print("  IG_USERNAME = 'your_real_username'")
-        print("  IG_PASSWORD = 'your_real_password'")
-        sys.exit(1)
-    
-    success = main_bot()
+    success = main()
     sys.exit(0 if success else 1)
