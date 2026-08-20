@@ -428,6 +428,7 @@ def check_image_quality(image_path):
             width, height = img.size
             print(f"📐 Resolution: {width}x{height}")
             
+            # यदि चौड़ाई 512 से अधिक है तो हम इसे प्रोसेस करेंगे
             if width < 512 or height < 512:
                 return False
             
@@ -612,7 +613,6 @@ def main():
         print(f"✅ कैप्शन तैयार ({len(caption)} अक्षर)")
         
         # STEP 4: Facebook पर पोस्ट करें
-        print("\n📤 STEP 4: Facebook पर पोस्ट कर रहा हूँ...")
         post_id = post_to_facebook(image_path, caption)
         
         # STEP 5: क्लीनअप
