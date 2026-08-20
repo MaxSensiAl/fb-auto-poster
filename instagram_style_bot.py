@@ -51,99 +51,68 @@ session.mount("https://", adapter)
 session.mount("http://", adapter)
 
 # ============================================
-# 🎨 MULTIPLE PROMPTS (बेहतर चेहरे और क्वालिटी के लिए)
+# 🎨 MULTIPLE PROMPTS (कमर तक की फोटो और अत्यंत साफ चेहरे के लिए)
 # ============================================
 
 PROMPTS = [
-    # 1. Traditional Indian Bride
+    # 1. Traditional Indian Bride (Waist-up)
     """
-    A stunning high-quality portrait of an Indian bride, 
-    highly detailed symmetrical facial features, realistic clear eyes, 
-    natural skin texture, sharp focus on face.
-    Traditional red bridal wear with gold embroidery.
-    Beautiful jewelry, maang tikka, and earrings.
-    Soft golden hour lighting, dreamy background.
-    8k resolution, photorealistic, professional.
-    Canon EOS R5, 85mm lens, f/1.4.
-    Same face, same character.
+    A stunning high-quality waist-up portrait of an Indian bride standing gracefully, 
+    showing her traditional red bridal wear down to the waist.
+    Razor-sharp focus on face, highly detailed symmetrical facial features, realistic clear eyes, 
+    extremely detailed natural skin texture, beautiful gold jewelry, dslr photography, 8k resolution.
     """,
     
-    # 2. Modern Bollywood Style
+    # 2. Modern Bollywood Style (Waist-up)
     """
-    A glamorous Bollywood actress portrait, 
-    symmetrical facial features, detailed eyes, natural skin structure.
-    Modern fusion wear with intricate detailing.
-    Studio lighting with soft shadows.
-    Professional makeup, perfect skin texture.
-    High fashion editorial style.
-    Sony A7R IV, 50mm lens, f/1.8.
-    Cinematic, dramatic, stunning.
+    A glamorous waist-up fashion editorial shot of a Bollywood actress standing gracefully, 
+    showing her modern designer fusion wear down to her waist.
+    Extremely sharp focus on face, detailed eyes, natural skin structure, professional studio lighting.
+    Symmetrical facial features, photorealistic, 8k.
     """,
     
-    # 3. South Indian Beauty
+    # 3. South Indian Beauty (Waist-up)
     """
-    A traditional South Indian woman in silk saree, 
-    highly detailed symmetrical face, clear eyes, natural skin.
-    Rich kanjivaram saree with gold border.
-    Temple jewelry, jasmine flowers in hair.
-    Natural sunlight, temple architecture background.
-    Authentic, cultural, beautiful, sharp focus on face.
-    Nikon Z9, 85mm lens.
-    Vibrant colors, sharp details.
+    A beautiful waist-up portrait of a South Indian woman standing gracefully in a silk saree, 
+    traditional design visible down to the waist.
+    Sharp focus on face, symmetrical eyes, detailed realistic skin, rich kanjivaram saree details.
+    Natural sunlight, temple architecture background, highly focused, dslr quality.
     """,
     
-    # 4. Royal Rajasthani Style
+    # 4. Royal Rajasthani Style (Waist-up)
     """
-    A royal Rajasthani woman in traditional attire, 
-    clear symmetrical facial features, highly detailed eyes, realistic look.
-    Bandhani dupatta, heavy silver jewelry.
-    Desert palace background, golden hour.
-    Regal, elegant, majestic, sharp focus.
-    Leica M11, 50mm Summilux.
-    Warm tones, rich textures.
+    A royal Rajasthani woman standing in a palace, waist-up portrait showing her traditional 
+    heavy-embroidered lehenga and silver jewelry down to the waist.
+    Symmetrical face, highly detailed realistic eyes, razor-sharp focus on face, realistic skin texture.
+    Warm golden sunset lighting, majestic look, crystal clear.
     """,
     
-    # 5. Modern Minimalist
+    # 5. Modern Minimalist (Waist-up)
     """
-    A modern Indian woman in minimalist style, 
-    symmetrical face, natural skin texture, highly detailed facial features.
-    Simple elegant outfit, subtle jewelry.
-    Clean white background, soft natural light.
-    Contemporary, fresh, sophisticated.
-    Professional headshot quality, sharp focus on face.
+    A modern Indian woman standing elegantly, waist-up shot showing her minimalist pastel saree down to the waist.
+    Clean symmetrical face, realistic eyes, natural detailed skin, sharp focus on facial features.
+    Minimalist modern background, soft daylight, contemporary style, photorealistic, sharp focus.
     """,
     
-    # 6. Festival Special
+    # 6. Festival Special (Waist-up)
     """
-    An Indian woman celebrating Diwali, 
-    happy expression, symmetrical facial features, clear realistic eyes.
-    Traditional lehenga with mirror work.
-    Diya background, festive lighting.
-    Joyful expression, vibrant colors, sharp focus on face.
-    Canon EOS R3, 24-70mm lens.
-    Festive, warm, celebratory.
+    A happy Indian woman celebrating Diwali, waist-up standing pose showing her entire mirror-work lehenga down to the waist.
+    Razor-sharp focus on face, happy realistic expression, symmetrical facial features, highly detailed eyes.
+    Vibrant colors, festive warm lighting, highly focused, professional photography.
     """,
     
-    # 7. Wedding Guest Look
+    # 7. Wedding Guest Look (Waist-up)
     """
-    A beautiful woman in wedding guest attire, 
-    highly detailed symmetrical face, natural skin, realistic features.
-    Elegant saree or lehenga.
-    Soft romantic lighting.
-    Floral background, dreamy atmosphere, sharp focus on face.
-    Professional wedding photography style.
-    Rich colors, soft bokeh.
+    A beautiful Indian woman in wedding guest attire, waist-up standing shot showing elegant designer wear down to her waist.
+    Symmetrical facial features, highly detailed realistic eyes, natural skin structure, sharp focus.
+    Soft romantic lighting, elegant wedding hall background with gentle bokeh, dslr photography.
     """,
     
-    # 8. Kashmiri Beauty
+    # 8. Kashmiri Beauty (Waist-up)
     """
-    A Kashmiri woman in traditional pheran, 
-    highly detailed symmetrical face, clear eyes, natural realistic skin.
-    Snow-capped mountains background.
-    Natural winter lighting, sharp focus on face.
-    Authentic, cultural, serene.
-    Nikon D850, 70-200mm lens.
-    Crystal clear, sharp focus.
+    A Kashmiri woman standing gracefully, waist-up portrait wearing a traditional embroidered pheran down to the waist.
+    Symmetrical face, highly detailed realistic eyes, natural fair skin, sharp focus on face.
+    Snowy mountains background, soft winter sunlight, realistic textures, crystal clear.
     """
 ]
 
@@ -201,7 +170,7 @@ def generate_ai_image_hf(prompt_text, model_id="playgroundai/playground-v2.5-102
         # यदि मॉडल लोड हो रहा है, तो प्रतीक्षा करें
         if response.status_code == 503:
             estimated_time = response.json().get("estimated_time", 20)
-            print(f"⏳ मॉडल लोड हो रहा है, {estimated_time:.1f} सेकंड प्रतीक्षा कर रहा हूँ...")
+            print(f"⏳  मॉडल लोड हो रहा है, {estimated_time:.1f} सेकंड प्रतीक्षा कर रहा हूँ...")
             time.sleep(min(estimated_time, 30))
             response = session.post(api_url, headers=headers, json=payload, timeout=120)
             
@@ -226,7 +195,7 @@ def generate_ai_hercai(prompt_text, filename="generated_photo.jpg"):
     url = "https://hercai.onrender.com/v3/hercai"
     
     payload = {
-        "prompt": prompt_text,
+        "prompt": prompt_text + ", highly detailed, sharp focus, realistic face, 8k resolution",
         "model": "v3"  # v3 मॉडल SDXL है जो चेहरे और शरीर को बिल्कुल असली दिखाता है
     }
     
@@ -306,10 +275,10 @@ def generate_ai_image_simple(filename="generated_photo.jpg"):
     print("🔄 सरल प्रॉम्प्ट के साथ Retry कर रहा हूँ...")
     
     simple_prompts = [
-        "Beautiful Indian bride in traditional red dress, symmetrical face, clear eyes, professional photography, realistic skin",
-        "Stunning Indian woman in saree, symmetrical facial features, realistic eyes, professional portrait",
-        "Glamorous Bollywood actress portrait, symmetrical face, professional photography, studio lighting",
-        "Elegant Indian woman in traditional jewelry, detailed face, soft lighting, professional photo"
+        "Beautiful Indian bride, waist-up portrait, traditional red dress, symmetrical face, razor-sharp focus on face, realistic skin",
+        "Stunning Indian woman in saree, waist-up portrait, detailed symmetrical face, clear eyes, professional portrait, sharp focus",
+        "Glamorous Bollywood actress portrait, waist-up shot, symmetrical face, sharp focus, professional photography, studio lighting",
+        "Elegant Indian woman in traditional jewelry, waist-up portrait, highly detailed face, sharp focus, professional photo"
     ]
     
     simple_prompt = random.choice(simple_prompts)
@@ -344,14 +313,12 @@ def create_placeholder_image(filename="placeholder.jpg"):
 
 def enhance_image_quality(image_path):
     """
-    Image Quality Enhance - संतुलित सेटिंग्स के साथ
+    Image Quality Enhance - धुंधलापन (Blur) पूरी तरह समाप्त करने के लिए
     """
     try:
         from PIL import Image, ImageEnhance
         
         img = Image.open(image_path)
-        
-        # 1. Resolution Check
         width, height = img.size
         print(f"📐 Current Resolution: {width}x{height}")
         
@@ -361,13 +328,13 @@ def enhance_image_quality(image_path):
             print(f"📐 Resizing: {width}x{height} → {new_width}x{new_height}")
             img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
         
-        # 2. Sharpness Enhance (चेहरे की त्वचा को प्राकृतिक रखने के लिए इसे कम किया गया)
+        # 2. Sharpness Enhance (धुंधलेपन को दूर करने के लिए इसे 1.02 से बढ़ाकर 1.4 किया गया)
         enhancer = ImageEnhance.Sharpness(img)
-        img = enhancer.enhance(1.02)  # चेहरे के लुक को प्राकृतिक बनाए रखने के लिए हल्का सुधार
+        img = enhancer.enhance(1.4)  # ✅ चेहरे को बिल्कुल साफ और क्लियर करने के लिए 40% तीक्ष्णता बढ़ाएं
         
         # 3. Contrast Enhance
         enhancer = ImageEnhance.Contrast(img)
-        img = enhancer.enhance(1.02)  
+        img = enhancer.enhance(1.05)  
         
         # 4. High Quality Save
         img.save(image_path, quality=95, optimize=True, format='JPEG')
