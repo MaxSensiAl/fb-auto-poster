@@ -10,7 +10,6 @@ from urllib3.util import Retry
 
 # ============================================
 # 🌐 GITHUB Actions के लिए IPv4-Force DNS पैच
-# (Hugging Face DNS Connection Error को पूरी तरह ठीक करने के लिए)
 # ============================================
 import urllib3.util.connection as urllib3_connection
 urllib3_connection.HAS_IPV6 = False
@@ -28,7 +27,6 @@ FB_ACCESS_TOKEN = os.environ.get("FB_ACCESS_TOKEN")
 GEMINI_API = os.environ.get("GEMINI_API")
 HF_TOKEN = os.environ.get("HF_TOKEN")
 
-# Check Credentials
 if not FB_PAGE_ID or not FB_ACCESS_TOKEN:
     print("❌ Facebook Credentials नहीं मिले!")
     sys.exit(1)
@@ -51,116 +49,92 @@ session.mount("https://", adapter)
 session.mount("http://", adapter)
 
 # ============================================
-# 🎨 MULTIPLE PROMPTS (कमर तक की फोटो और अत्यंत साफ चेहरे के लिए)
+# 🎨 IMPROVED PROMPTS - Better quality instructions
 # ============================================
 
 PROMPTS = [
-    # 1. Traditional Indian Bride (Waist-up) - Enhanced for clarity
     """
-    A stunning high-quality waist-up portrait of an Indian bride standing gracefully, 
-    showing her traditional red bridal wear down to the waist.
-    Razor-sharp focus on face, highly detailed symmetrical facial features, realistic clear eyes, 
-    extremely detailed natural skin texture, beautiful gold jewelry, dslr photography, 8k resolution.
-    crystal clear skin, no blur, no distortion, photorealistic, hyper-detailed face, 
-    sharp facial features, perfect clarity, high definition.
+    Masterpiece, best quality, ultra high resolution, 8k, photorealistic portrait of a beautiful Indian bride,
+    waist-up shot, traditional red bridal lehenga, intricate gold jewelry, sharp focus on face,
+    highly detailed symmetrical facial features, crystal clear eyes, flawless skin texture,
+    professional studio lighting, dslr photography, sharp, no blur, perfect clarity,
+    hyper realistic, detailed skin pores, natural looking, cinematic lighting, award winning photography.
     """,
     
-    # 2. Modern Bollywood Style (Waist-up) - Enhanced for clarity
     """
-    A glamorous waist-up fashion editorial shot of a Bollywood actress standing gracefully, 
-    showing her modern designer fusion wear down to her waist.
-    Extremely sharp focus on face, detailed eyes, natural skin structure, professional studio lighting.
-    Symmetrical facial features, photorealistic, 8k, ultra clear, no blur, perfect skin texture,
-    high definition facial details, crisp and sharp image.
+    Masterpiece, best quality, photorealistic waist-up portrait of a Bollywood actress,
+    modern designer fusion wear, perfect symmetrical face, sharp focus, detailed eyes,
+    natural skin texture, professional studio photography, 8k resolution, crystal clear,
+    no blur, ultra sharp, high definition, perfect lighting, fashion editorial style.
     """,
     
-    # 3. South Indian Beauty (Waist-up) - Enhanced for clarity
     """
-    A beautiful waist-up portrait of a South Indian woman standing gracefully in a silk saree, 
-    traditional design visible down to the waist.
-    Sharp focus on face, symmetrical eyes, detailed realistic skin, rich kanjivaram saree details.
-    Natural sunlight, temple architecture background, highly focused, dslr quality.
-    Ultra clear face, perfect skin, no blur, crystal sharp, high definition portrait.
+    Masterpiece, best quality, ultra realistic waist-up portrait of a South Indian woman,
+    traditional silk saree, kanjivaram fabric, sharp facial features, clear eyes,
+    natural skin, professional portrait photography, 8k, highly detailed, no blur,
+    perfect composition, soft natural lighting, temple background.
     """,
     
-    # 4. Royal Rajasthani Style (Waist-up) - Enhanced for clarity
     """
-    A royal Rajasthani woman standing in a palace, waist-up portrait showing her traditional 
-    heavy-embroidered lehenga and silver jewelry down to the waist.
-    Symmetrical face, highly detailed realistic eyes, razor-sharp focus on face, realistic skin texture.
-    Warm golden sunset lighting, majestic look, crystal clear, no blur, perfect clarity.
+    Masterpiece, best quality, photorealistic waist-up portrait of a Rajasthani royal woman,
+    heavy embroidered lehenga, silver jewelry, palace background, sharp focus on face,
+    detailed eyes, natural skin texture, golden sunset lighting, 8k resolution,
+    crystal clear, no blur, ultra sharp, professional photography.
     """,
     
-    # 5. Modern Minimalist (Waist-up) - Enhanced for clarity
     """
-    A modern Indian woman standing elegantly, waist-up shot showing her minimalist pastel saree down to the waist.
-    Clean symmetrical face, realistic eyes, natural detailed skin, sharp focus on facial features.
-    Minimalist modern background, soft daylight, contemporary style, photorealistic, sharp focus.
-    Ultra clear, no blur, perfect skin, high definition, crystal sharp.
+    Masterpiece, best quality, 8k photorealistic waist-up portrait of a modern Indian woman,
+    pastel saree, minimalist background, perfect symmetrical face, clear detailed eyes,
+    natural skin, sharp focus, no blur, studio lighting, fashion photography,
+    high definition, crystal clear, ultra sharp.
     """,
     
-    # 6. Festival Special (Waist-up) - Enhanced for clarity
     """
-    A happy Indian woman celebrating Diwali, waist-up standing pose showing her entire mirror-work lehenga down to the waist.
-    Razor-sharp focus on face, happy realistic expression, symmetrical facial features, highly detailed eyes.
-    Vibrant colors, festive warm lighting, highly focused, professional photography.
-    Clear skin, no blur, no distortion, perfect facial features, high definition.
+    Masterpiece, best quality, photorealistic waist-up portrait of an Indian woman celebrating Diwali,
+    mirror-work lehenga, happy expression, sharp facial features, detailed eyes,
+    festive lighting, professional photography, 8k, no blur, crystal clear,
+    ultra sharp, perfect composition.
     """,
     
-    # 7. Wedding Guest Look (Waist-up) - Enhanced for clarity
     """
-    A beautiful Indian woman in wedding guest attire, waist-up standing shot showing elegant designer wear down to her waist.
-    Symmetrical facial features, highly detailed realistic eyes, natural skin structure, sharp focus.
-    Soft romantic lighting, elegant wedding hall background with gentle bokeh, dslr photography.
-    Ultra clear face, perfect clarity, no blur, sharp skin texture, high definition.
+    Masterpiece, best quality, 8k photorealistic waist-up portrait of an Indian wedding guest,
+    elegant designer wear, soft romantic lighting, sharp focus on face,
+    detailed eyes, natural skin texture, wedding hall background, no blur,
+    crystal clear, professional photography, high definition.
     """,
     
-    # 8. Kashmiri Beauty (Waist-up) - Enhanced for clarity
     """
-    A Kashmiri woman standing gracefully, waist-up portrait wearing a traditional embroidered pheran down to the waist.
-    Symmetrical face, highly detailed realistic eyes, natural fair skin, sharp focus on face.
-    Snowy mountains background, soft winter sunlight, realistic textures, crystal clear.
-    No blur, perfect clarity, sharp facial features, high definition.
+    Masterpiece, best quality, photorealistic waist-up portrait of a Kashmiri beauty,
+    traditional embroidered pheran, snow mountains background, sharp facial features,
+    clear eyes, natural fair skin, soft winter light, 8k, no blur,
+    crystal clear, ultra sharp, professional portrait.
     """
 ]
 
 def create_default_prompt():
-    """
-    Randomly select a prompt for variety
-    """
     return random.choice(PROMPTS)
 
 # ============================================
-# 📸 1. INSTAGRAM STYLE (Skip Login)
+# 📸 1. INSTAGRAM STYLE
 # ============================================
 
 def learn_style_from_instagram():
-    """
-    Instagram Login Skip - Directly Use Default Prompt
-    """
     print(f"📸 Instagram Login Skip - Using Manual Style Prompts")
     print(f"🎯 Target Profile: @{TARGET_PROFILE}")
-    print(f"🔄 Random Prompt Selected for Variety")
-    
-    # Return random prompt from PROMPTS list
     selected_prompt = random.choice(PROMPTS)
     print(f"✅ Selected Prompt: {selected_prompt[:100]}...")
-    
     return selected_prompt
 
 # ============================================
-# 🎨 2. HUGGING FACE से PHOTO GENERATE करें (Playground v2.5)
+# 🎨 2. HUGGING FACE IMAGE GENERATION
 # ============================================
 
 def generate_ai_image_hf(prompt_text, model_id="playgroundai/playground-v2.5-1024px-aesthetic", filename="generated_photo.jpg"):
-    """
-    Hugging Face Mirror का उपयोग करके Playground v2.5 से फोटो जनरेट करें
-    """
     if not HF_TOKEN:
-        print("⚠️ HF_TOKEN नहीं मिला! Hercai V3 बैकअप पर जा रहा हूँ...")
+        print("⚠️ HF_TOKEN नहीं मिला!")
         return None
         
-    print(f"🚀 Hugging Face Mirror से {model_id} मॉडल द्वारा जनरेट कर रहा हूँ...")
+    print(f"🚀 Hugging Face से जनरेट कर रहा हूँ...")
     api_url = f"https://api-inference.hf-mirror.com/models/{model_id}"
     headers = {"Authorization": f"Bearer {HF_TOKEN}"}
     
@@ -168,96 +142,85 @@ def generate_ai_image_hf(prompt_text, model_id="playgroundai/playground-v2.5-102
         "inputs": prompt_text,
         "parameters": {
             "width": 1024,
-            "height": 1024,
+            "height": 1280,
             "guidance_scale": 9.0,
-            "num_inference_steps": 50
+            "num_inference_steps": 60,
+            "negative_prompt": "blurry, low quality, distorted face, bad anatomy, ugly, deformed, pixelated"
         }
     }
     
     try:
-        response = session.post(api_url, headers=headers, json=payload, timeout=120)
+        response = session.post(api_url, headers=headers, json=payload, timeout=180)
         
-        # यदि मॉडल लोड हो रहा है, तो प्रतीक्षा करें
         if response.status_code == 503:
             estimated_time = response.json().get("estimated_time", 20)
-            print(f"⏳  मॉडल लोड हो रहा है, {estimated_time:.1f} सेकंड प्रतीक्षा कर रहा हूँ...")
-            time.sleep(min(estimated_time, 30))
-            response = session.post(api_url, headers=headers, json=payload, timeout=120)
+            print(f"⏳ मॉडल लोड हो रहा है, {estimated_time:.1f} सेकंड प्रतीक्षा...")
+            time.sleep(min(estimated_time, 40))
+            response = session.post(api_url, headers=headers, json=payload, timeout=180)
             
-        if response.status_code == 200 and len(response.content) > 10000:
+        if response.status_code == 200 and len(response.content) > 50000:
             with open(filename, 'wb') as f:
                 f.write(response.content)
-            print("✅ Hugging Face (Playground v2.5) से फोटो सफलतापूर्वक डाउनलोड हो गई!")
+            print("✅ Hugging Face से फोटो सफलतापूर्वक डाउनलोड हो गई!")
             return filename
         else:
             print(f"❌ HF Model Error: {response.status_code}")
             return None
     except Exception as e:
-        print(f"❌ HF Mirror Connection Error: {e}")
+        print(f"❌ HF Error: {e}")
         return None
 
-
 def generate_ai_hercai(prompt_text, filename="generated_photo.jpg"):
-    """
-    Hercai V3 (Stable Diffusion XL) - 100% मुफ्त लाइव जनरेशन (चेहरे और हाथों के लिए बेस्ट)
-    """
-    print("🚀 [लेयर 2] Hercai V3 (Stable Diffusion XL) से लाइव फोटो बना रहा हूँ...")
+    print("🚀 Hercai V3 से फोटो बना रहा हूँ...")
     url = "https://hercai.onrender.com/v3/hercai"
     
     payload = {
-        "prompt": prompt_text + ", highly detailed, sharp focus, realistic face, 8k resolution, crystal clear, no blur, perfect skin texture, high definition, photorealistic, ultra sharp",
-        "model": "v3"  # v3 मॉडल SDXL है जो चेहरे और शरीर को बिल्कुल असली दिखाता है
+        "prompt": prompt_text + ", masterpiece, best quality, 8k, photorealistic, sharp focus, no blur, crystal clear, highly detailed",
+        "model": "v3"
     }
     
     try:
-        response = session.post(url, json=payload, timeout=90)
+        response = session.post(url, json=payload, timeout=120)
         if response.status_code == 200:
             data = response.json()
-            img_url = data.get("reply")  # Hercai जनरेट की गई इमेज का सीधा लिंक 'reply' में देता है
+            img_url = data.get("reply")
             
             if img_url:
-                print("📥 फोटो जनरेट हो गई! डाउनलोड कर रहा हूँ...")
-                img_response = session.get(img_url, timeout=90)
+                print("📥 फोटो डाउनलोड कर रहा हूँ...")
+                img_response = session.get(img_url, timeout=120)
                 if img_response.status_code == 200:
                     with open(filename, 'wb') as f:
                         f.write(img_response.content)
-                    print("✅ Hercai V3 से हाई-क्वालिटी फोटो डाउनलोड हो गई!")
+                    print("✅ Hercai V3 से फोटो डाउनलोड हो गई!")
                     return filename
     except Exception as e:
-        print(f"❌ Hercai V3 जनरेशन विफल: {e}")
+        print(f"❌ Hercai V3 Error: {e}")
     return None
 
-
 def generate_ai_image(prompt_text, filename="generated_photo.jpg"):
-    """
-    3-लेयर इमेज जनरेटर: 
-    1. पहले Playground v2.5 (Hugging Face) का प्रयास
-    2. विफल होने पर Hercai V3 (SDXL) का प्रयास
-    3. अंत में Pollinations (Flux-Realism) पर स्विच
-    """
-    print("\n🎨 [इमेज जनरेटर] 3-लेयर प्रक्रिया शुरू हो रही है...")
+    print("\n🎨 [इमेज जनरेटर] शुरू हो रहा है...")
     
-    # LAYER 1: Playground v2.5 (Hugging Face Mirror)
+    # LAYER 1: Playground v2.5
     image_path = generate_ai_image_hf(prompt_text, "playgroundai/playground-v2.5-1024px-aesthetic", filename)
-    if image_path:
+    if image_path and os.path.getsize(image_path) > 50000:
         enhance_image_quality(image_path)
         return image_path
         
-    # LAYER 2: Hercai V3 (Stable Diffusion XL)
+    # LAYER 2: Hercai V3
     image_path = generate_ai_hercai(prompt_text, filename)
-    if image_path:
+    if image_path and os.path.getsize(image_path) > 50000:
         enhance_image_quality(image_path)
         return image_path
 
-    # LAYER 3: Pollinations (Flux-Realism)
-    print("🔄 [लेयर 3] पोलिनेशंस बैकअप सर्वर पर स्विच कर रहा हूँ...")
+    # LAYER 3: Pollinations
+    print("🔄 Pollinations बैकअप पर स्विच...")
     clean_prompt = prompt_text.strip().replace('\n', ' ').replace('  ', ' ')
     encoded_prompt = urllib.parse.quote(clean_prompt[:250])
     
     flux_url = (
         f"https://image.pollinations.ai/prompt/{encoded_prompt}"
-        f"?width=1024&height=1280"  
-        f"&model=flux-realism"  # यथार्थवादी चेहरे के लिए स्पेशल बैकअप मॉडल
+        f"?width=1024&height=1280"
+        f"&model=flux-realism"
         f"&nologo=true"
         f"&seed={random.randint(1, 9999999)}"
         f"&quality=high"
@@ -266,48 +229,36 @@ def generate_ai_image(prompt_text, filename="generated_photo.jpg"):
     
     try:
         response = session.get(flux_url, timeout=120)
-        if response.status_code == 200 and len(response.content) > 50000:
+        if response.status_code == 200 and len(response.content) > 80000:
             with open(filename, 'wb') as f:
                 f.write(response.content)
-            print("✅ पोलिनेशंस बैकअप से फोटो सफलतापूर्वक जनरेट हो गई!")
+            print("✅ Pollinations से फोटो जनरेट हो गई!")
             enhance_image_quality(filename)
             return filename
     except Exception as e:
-        print(f"❌ पोलिनेशंस बैकअप सर्वर विफल: {e}")
+        print(f"❌ Pollinations Error: {e}")
         
     return create_placeholder_image(filename)
 
-
 def generate_ai_image_simple(filename="generated_photo.jpg"):
-    """
-    सरल प्रॉम्प्ट के साथ Retry
-    """
-    print("🔄 सरल प्रॉम्प्ट के साथ Retry कर रहा हूँ...")
-    
+    print("🔄 Simple Prompt Retry...")
     simple_prompts = [
-        "Beautiful Indian bride, waist-up portrait, traditional red dress, symmetrical face, razor-sharp focus on face, realistic skin, crystal clear, no blur, perfect clarity, high definition",
-        "Stunning Indian woman in saree, waist-up portrait, detailed symmetrical face, clear eyes, professional portrait, sharp focus, ultra clear, perfect skin, no blur",
-        "Glamorous Bollywood actress portrait, waist-up shot, symmetrical face, sharp focus, professional photography, studio lighting, crystal clear, no blur, high definition",
-        "Elegant Indian woman in traditional jewelry, waist-up portrait, highly detailed face, sharp focus, professional photo, perfect clarity, no blur, ultra sharp"
+        "Masterpiece, best quality, photorealistic portrait of beautiful Indian bride, waist-up, sharp focus, 8k, crystal clear, no blur",
+        "Masterpiece, 8k photorealistic portrait of Indian woman in saree, waist-up, sharp, clear, no blur"
     ]
-    
     simple_prompt = random.choice(simple_prompts)
     return generate_ai_image(simple_prompt, filename)
-
 
 def create_placeholder_image(filename="placeholder.jpg"):
     try:
         from PIL import Image, ImageDraw, ImageFont
-        
         img = Image.new('RGB', (1024, 1280), color=(255, 200, 230))
         draw = ImageDraw.Draw(img)
-        
         text = "✨ AI Beauty ✨"
         try:
             font = ImageFont.load_default()
         except:
             font = None
-        
         draw.text((400, 600), text, fill=(200, 50, 100), font=font)
         img.save(filename)
         print(f"✅ Placeholder Image बन गई!")
@@ -318,45 +269,52 @@ def create_placeholder_image(filename="placeholder.jpg"):
         return filename
 
 # ============================================
-# 🖼️ IMAGE ENHANCE - FIXED FOR BLUR REMOVAL
+# 🖼️ IMAGE ENHANCE - FIXED
 # ============================================
 
 def enhance_image_quality(image_path):
     """
-    Image Quality Enhance - धुंधलापन (Blur) पूरी तरह समाप्त करने के लिए
+    Image Quality Enhance - Blur हटाने के लिए
     """
     try:
         from PIL import Image, ImageEnhance, ImageFilter
         
+        # FIX: Use os.path.getsize instead of os.getsize
+        if not os.path.exists(image_path) or os.path.getsize(image_path) < 10000:
+            print("⚠️ Image too small or not exists!")
+            return False
+            
         img = Image.open(image_path)
         width, height = img.size
         print(f"📐 Current Resolution: {width}x{height}")
         
-        # 1. Resize if too small
-        if width < 1024 or height < 1280:
-            new_width = max(1024, width * 2)
-            new_height = max(1280, height * 2)
+        # अगर resolution बहुत छोटा है तो बड़ा करें
+        if width < 1024 or height < 1024:
+            # Upscale 2x using LANCZOS
+            new_width = width * 2
+            new_height = height * 2
             print(f"📐 Resizing: {width}x{height} → {new_width}x{new_height}")
             img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
         
-        # 2. SHARPNESS ENHANCE - INCREASED FOR BLUR REMOVAL
-        # Sharpness को 1.4 से बढ़ाकर 2.0 किया गया (40% से 100% तक)
+        # Sharpness Enhance - ब्लर हटाने के लिए
         enhancer = ImageEnhance.Sharpness(img)
-        img = enhancer.enhance(2.0)  # ✅ Sharpness को 2x करें - Blur हटाने के लिए
+        img = enhancer.enhance(2.5)  # Sharpness बढ़ाएं
         
-        # 3. Apply Unsharp Mask for even better clarity
-        img = img.filter(ImageFilter.UnsharpMask(radius=2, percent=150, threshold=3))
+        # Unsharp Mask for professional sharpening
+        img = img.filter(ImageFilter.UnsharpMask(radius=2, percent=200, threshold=2))
         
-        # 4. Contrast Enhance
+        # Contrast Enhance
         enhancer = ImageEnhance.Contrast(img)
-        img = enhancer.enhance(1.15)  # थोड़ा कंट्रास्ट बढ़ाएं
+        img = enhancer.enhance(1.15)
         
-        # 5. Color Enhance - slight boost for vibrancy
+        # Color Enhance
         enhancer = ImageEnhance.Color(img)
         img = enhancer.enhance(1.1)
         
-        # 6. High Quality Save with less compression
+        # High Quality Save
         img.save(image_path, quality=98, optimize=True, format='JPEG', subsampling=0)
+        
+        # Check if enhancement worked
         new_size = os.path.getsize(image_path)
         print(f"✅ Enhanced! New Size: {new_size/1024:.1f} KB")
         return True
@@ -366,21 +324,22 @@ def enhance_image_quality(image_path):
         return False
 
 # ============================================
-# 📷 PHOTO QUALITY CHECK
+# 📷 PHOTO QUALITY CHECK - FIXED
 # ============================================
 
 def check_image_quality(image_path):
     print("📷 Photo Quality Check कर रहा हूँ...")
     
     try:
+        # FIX: Use os.path.getsize instead of os.getsize
         if not os.path.exists(image_path):
             print("❌ File exists नहीं है!")
             return False
         
-        file_size = os.getsize(image_path)
+        file_size = os.path.getsize(image_path)  # ✅ Fixed here
         print(f"📊 File Size: {file_size/1024:.1f} KB")
         
-        if file_size < 50000:  # Minimum 50KB for quality image
+        if file_size < 50000:
             print("❌ File Size बहुत छोटी है! (< 50KB)")
             return False
         
@@ -399,17 +358,14 @@ def check_image_quality(image_path):
             return True
             
         except ImportError:
-            if file_size > 50000:
-                return True
-            else:
-                return False
+            return file_size > 50000
                 
     except Exception as e:
         print(f"❌ Quality Check Error: {e}")
         return False
 
 # ============================================
-# 📝 3. CAPTION GENERATE करें (FIXED EMOJIS)
+# 📝 CAPTION GENERATE
 # ============================================
 
 def generate_caption():
@@ -435,7 +391,7 @@ def generate_caption():
 
 🎯 100+ Reactions = Next Look और भी Better!
 
-#AIFashion #IndianBeauty #AIArt #ViralFashion #ExplorePage #FYP #StyleInspo #FashionGoals #AIModel #DigitalFashion #AIArtwork #ModernBride #IndianWear #FusionFashion #AIArtist #VirtualFashion #TechStyle #InstaFashion #DailyFashion #Fashionista #AICouture #VirtualInfluencer #IndianFashionBlogger #AIForFashion""",
+#AIFashion #IndianBeauty #AIArt #ViralFashion #ExplorePage #FYP #StyleInspo #FashionGoals #AIModel #DigitalFashion""",
         
         f"""{time_text}
 
@@ -448,7 +404,7 @@ def generate_caption():
 
 💡 50+ Comments = Next Post Aaj Raat hi!
 
-#AIBride #IndianWedding #AIArt #TrendingReels #ViralPost #FYP #ExplorePage #AIFashion #BridalWear #AICommunity #DigitalArt #AIInfluencer #AIModel #FashionAI #IndianFashion #BollywoodStyle #AIArtCommunity #ViralReels #InstagramReels #Explore #TrendingNow #AIContent #AIGirl #ArtificialIntelligence #TechFashion #FutureOfFashion #AIforIndia #IndianAI #DesiBride #ShaadiGoals""",
+#AIBride #IndianWedding #AIArt #TrendingReels #ViralPost #FYP #ExplorePage #AIFashion #BridalWear #AICommunity""",
         
         f"""{time_text}
 
@@ -462,13 +418,13 @@ def generate_caption():
 
 🎯 200+ Votes = Next Look Special!
 
-#RoyalBeauty #IndianFashion #AIArt #ViralReels #ExplorePage #FYP #TraditionalWear #ModernFashion #AICouture #VirtualInfluencer #AICommunity #DigitalArt #FashionGram #BridalFashion #IndianBride #AIContent #TechFashion #FutureOfFashion #AIforIndia #IndianAI #DesiBride #ShaadiGoals #AIFashionista #StyleInspo #OOTD #FashionGoals"""
+#RoyalBeauty #IndianFashion #AIArt #ViralReels #ExplorePage #FYP #TraditionalWear #ModernFashion #AICouture"""
     ]
     
     return random.choice(captions)
 
 # ============================================
-# 📤 4. FACEBOOK पर POST करें
+# 📤 FACEBOOK POST
 # ============================================
 
 def post_to_facebook(image_path, caption):
@@ -503,7 +459,7 @@ def post_to_facebook(image_path, caption):
         return None
 
 # ============================================
-# 🧹 5. CLEANUP
+# 🧹 CLEANUP
 # ============================================
 
 def cleanup_files(*files):
@@ -516,24 +472,20 @@ def cleanup_files(*files):
                 pass
 
 # ============================================
-# 🚀 6. MAIN BOT
+# 🚀 MAIN BOT
 # ============================================
 
 def main():
     print("\n" + "="*60)
-    print("🚀 INSTAGRAM STYLE AI BOT START (3-LAYER ENGINE)")
+    print("🚀 INSTAGRAM STYLE AI BOT START (FIXED)")
     print("="*60)
     
     start_time = time.time()
     
     try:
-        # STEP 1: Style Select (Instagram Skip)
         print("\n📸 STEP 1: Style Select...")
         style_prompt = learn_style_from_instagram()
         
-        print(f"✅ Selected Style: {style_prompt[:100]}...")
-        
-        # STEP 2: AI से फोटो बनाएं
         print("\n🎨 STEP 2: AI से फोटो बना रहा हूँ...")
         image_path = generate_ai_image(style_prompt, "instagram_style_photo.jpg")
         
@@ -541,41 +493,38 @@ def main():
             print("❌ फोटो नहीं बन पाई!")
             return False
         
-        # ✅ STEP 2.5: Photo Quality Check with higher threshold
-        print("\n📷 STEP 2.5: Photo Quality Check...")
+        # Quality Check
+        print("\n📷 STEP 3: Photo Quality Check...")
         quality_ok = check_image_quality(image_path)
         
         if not quality_ok:
-            print("⚠️ Quality Check Fail हुई! नई फोटो बना रहा हूँ...")
-            # Retry with simple prompt
+            print("⚠️ Quality Check Fail! Retry...")
             image_path = generate_ai_image_simple("retry_photo.jpg")
             if image_path:
-                # Check quality again
                 quality_ok = check_image_quality(image_path)
                 if not quality_ok:
-                    print("⚠️ Quality Check फिर Fail हुई! Placeholder use कर रहा हूँ...")
+                    print("⚠️ Quality फिर Fail! Placeholder...")
                     image_path = create_placeholder_image("placeholder_final.jpg")
         
-        # STEP 3: कैप्शन बनाएं
-        print("\n📝 STEP 3: कैप्शन बना रहा हूँ...")
+        # Caption
+        print("\n📝 STEP 4: कैप्शन बना रहा हूँ...")
         caption = generate_caption()
-        print(f"✅ कैप्शन तैयार ({len(caption)} अक्षर)")
-        print(f"📝 Caption Preview: {caption[:150]}...")
+        print(f"✅ Caption: {caption[:150]}...")
         
-        # STEP 4: Facebook पर पोस्ट करें
-        print("\n📤 STEP 4: Facebook पर पोस्ट कर रहा हूँ...")
+        # Post
+        print("\n📤 STEP 5: Facebook पर पोस्ट...")
         post_id = post_to_facebook(image_path, caption)
         
-        # STEP 5: क्लीनअप
-        print("\n🧹 STEP 5: क्लीनअप...")
-        cleanup_files(image_path, "ref_post_1.jpg", "ref_post_2.jpg", "ref_post_3.jpg", "retry_photo.jpg", "placeholder_final.jpg")
+        # Cleanup
+        print("\n🧹 STEP 6: Cleanup...")
+        cleanup_files(image_path, "retry_photo.jpg", "placeholder_final.jpg")
         
         elapsed = time.time() - start_time
         
         if post_id:
             print("\n" + "="*60)
-            print("🎉 SUCCESS! सब कुछ हो गया!")
-            print(f"⏱️ कुल समय: {elapsed:.2f} सेकंड")
+            print("🎉 SUCCESS!")
+            print(f"⏱️ Time: {elapsed:.2f} सेकंड")
             print(f"📱 Post ID: {post_id}")
             print("="*60)
             return True
@@ -584,14 +533,10 @@ def main():
             return False
             
     except Exception as e:
-        print(f"\n❌ CRITICAL ERROR: {e}")
+        print(f"\n❌ ERROR: {e}")
         import traceback
         traceback.print_exc()
         return False
-
-# ============================================
-# 🎯 EXECUTE
-# ============================================
 
 if __name__ == "__main__":
     success = main()
