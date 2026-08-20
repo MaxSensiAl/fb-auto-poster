@@ -55,64 +55,72 @@ session.mount("http://", adapter)
 # ============================================
 
 PROMPTS = [
-    # 1. Traditional Indian Bride (Waist-up)
+    # 1. Traditional Indian Bride (Waist-up) - Enhanced for clarity
     """
     A stunning high-quality waist-up portrait of an Indian bride standing gracefully, 
     showing her traditional red bridal wear down to the waist.
     Razor-sharp focus on face, highly detailed symmetrical facial features, realistic clear eyes, 
     extremely detailed natural skin texture, beautiful gold jewelry, dslr photography, 8k resolution.
+    crystal clear skin, no blur, no distortion, photorealistic, hyper-detailed face, 
+    sharp facial features, perfect clarity, high definition.
     """,
     
-    # 2. Modern Bollywood Style (Waist-up)
+    # 2. Modern Bollywood Style (Waist-up) - Enhanced for clarity
     """
     A glamorous waist-up fashion editorial shot of a Bollywood actress standing gracefully, 
     showing her modern designer fusion wear down to her waist.
     Extremely sharp focus on face, detailed eyes, natural skin structure, professional studio lighting.
-    Symmetrical facial features, photorealistic, 8k.
+    Symmetrical facial features, photorealistic, 8k, ultra clear, no blur, perfect skin texture,
+    high definition facial details, crisp and sharp image.
     """,
     
-    # 3. South Indian Beauty (Waist-up)
+    # 3. South Indian Beauty (Waist-up) - Enhanced for clarity
     """
     A beautiful waist-up portrait of a South Indian woman standing gracefully in a silk saree, 
     traditional design visible down to the waist.
     Sharp focus on face, symmetrical eyes, detailed realistic skin, rich kanjivaram saree details.
     Natural sunlight, temple architecture background, highly focused, dslr quality.
+    Ultra clear face, perfect skin, no blur, crystal sharp, high definition portrait.
     """,
     
-    # 4. Royal Rajasthani Style (Waist-up)
+    # 4. Royal Rajasthani Style (Waist-up) - Enhanced for clarity
     """
     A royal Rajasthani woman standing in a palace, waist-up portrait showing her traditional 
     heavy-embroidered lehenga and silver jewelry down to the waist.
     Symmetrical face, highly detailed realistic eyes, razor-sharp focus on face, realistic skin texture.
-    Warm golden sunset lighting, majestic look, crystal clear.
+    Warm golden sunset lighting, majestic look, crystal clear, no blur, perfect clarity.
     """,
     
-    # 5. Modern Minimalist (Waist-up)
+    # 5. Modern Minimalist (Waist-up) - Enhanced for clarity
     """
     A modern Indian woman standing elegantly, waist-up shot showing her minimalist pastel saree down to the waist.
     Clean symmetrical face, realistic eyes, natural detailed skin, sharp focus on facial features.
     Minimalist modern background, soft daylight, contemporary style, photorealistic, sharp focus.
+    Ultra clear, no blur, perfect skin, high definition, crystal sharp.
     """,
     
-    # 6. Festival Special (Waist-up)
+    # 6. Festival Special (Waist-up) - Enhanced for clarity
     """
     A happy Indian woman celebrating Diwali, waist-up standing pose showing her entire mirror-work lehenga down to the waist.
     Razor-sharp focus on face, happy realistic expression, symmetrical facial features, highly detailed eyes.
     Vibrant colors, festive warm lighting, highly focused, professional photography.
+    Clear skin, no blur, no distortion, perfect facial features, high definition.
     """,
     
-    # 7. Wedding Guest Look (Waist-up)
+    # 7. Wedding Guest Look (Waist-up) - Enhanced for clarity
     """
     A beautiful Indian woman in wedding guest attire, waist-up standing shot showing elegant designer wear down to her waist.
     Symmetrical facial features, highly detailed realistic eyes, natural skin structure, sharp focus.
     Soft romantic lighting, elegant wedding hall background with gentle bokeh, dslr photography.
+    Ultra clear face, perfect clarity, no blur, sharp skin texture, high definition.
     """,
     
-    # 8. Kashmiri Beauty (Waist-up)
+    # 8. Kashmiri Beauty (Waist-up) - Enhanced for clarity
     """
     A Kashmiri woman standing gracefully, waist-up portrait wearing a traditional embroidered pheran down to the waist.
     Symmetrical face, highly detailed realistic eyes, natural fair skin, sharp focus on face.
     Snowy mountains background, soft winter sunlight, realistic textures, crystal clear.
+    No blur, perfect clarity, sharp facial features, high definition.
     """
 ]
 
@@ -160,7 +168,9 @@ def generate_ai_image_hf(prompt_text, model_id="playgroundai/playground-v2.5-102
         "inputs": prompt_text,
         "parameters": {
             "width": 1024,
-            "height": 1024
+            "height": 1024,
+            "guidance_scale": 9.0,
+            "num_inference_steps": 50
         }
     }
     
@@ -195,7 +205,7 @@ def generate_ai_hercai(prompt_text, filename="generated_photo.jpg"):
     url = "https://hercai.onrender.com/v3/hercai"
     
     payload = {
-        "prompt": prompt_text + ", highly detailed, sharp focus, realistic face, 8k resolution",
+        "prompt": prompt_text + ", highly detailed, sharp focus, realistic face, 8k resolution, crystal clear, no blur, perfect skin texture, high definition, photorealistic, ultra sharp",
         "model": "v3"  # v3 मॉडल SDXL है जो चेहरे और शरीर को बिल्कुल असली दिखाता है
     }
     
@@ -251,7 +261,7 @@ def generate_ai_image(prompt_text, filename="generated_photo.jpg"):
         f"&nologo=true"
         f"&seed={random.randint(1, 9999999)}"
         f"&quality=high"
-        f"&enhance=false"
+        f"&enhance=true"
     )
     
     try:
@@ -275,10 +285,10 @@ def generate_ai_image_simple(filename="generated_photo.jpg"):
     print("🔄 सरल प्रॉम्प्ट के साथ Retry कर रहा हूँ...")
     
     simple_prompts = [
-        "Beautiful Indian bride, waist-up portrait, traditional red dress, symmetrical face, razor-sharp focus on face, realistic skin",
-        "Stunning Indian woman in saree, waist-up portrait, detailed symmetrical face, clear eyes, professional portrait, sharp focus",
-        "Glamorous Bollywood actress portrait, waist-up shot, symmetrical face, sharp focus, professional photography, studio lighting",
-        "Elegant Indian woman in traditional jewelry, waist-up portrait, highly detailed face, sharp focus, professional photo"
+        "Beautiful Indian bride, waist-up portrait, traditional red dress, symmetrical face, razor-sharp focus on face, realistic skin, crystal clear, no blur, perfect clarity, high definition",
+        "Stunning Indian woman in saree, waist-up portrait, detailed symmetrical face, clear eyes, professional portrait, sharp focus, ultra clear, perfect skin, no blur",
+        "Glamorous Bollywood actress portrait, waist-up shot, symmetrical face, sharp focus, professional photography, studio lighting, crystal clear, no blur, high definition",
+        "Elegant Indian woman in traditional jewelry, waist-up portrait, highly detailed face, sharp focus, professional photo, perfect clarity, no blur, ultra sharp"
     ]
     
     simple_prompt = random.choice(simple_prompts)
@@ -308,7 +318,7 @@ def create_placeholder_image(filename="placeholder.jpg"):
         return filename
 
 # ============================================
-# 🖼️ IMAGE ENHANCE
+# 🖼️ IMAGE ENHANCE - FIXED FOR BLUR REMOVAL
 # ============================================
 
 def enhance_image_quality(image_path):
@@ -316,28 +326,37 @@ def enhance_image_quality(image_path):
     Image Quality Enhance - धुंधलापन (Blur) पूरी तरह समाप्त करने के लिए
     """
     try:
-        from PIL import Image, ImageEnhance
+        from PIL import Image, ImageEnhance, ImageFilter
         
         img = Image.open(image_path)
         width, height = img.size
         print(f"📐 Current Resolution: {width}x{height}")
         
+        # 1. Resize if too small
         if width < 1024 or height < 1280:
-            new_width = 1024
-            new_height = 1280
+            new_width = max(1024, width * 2)
+            new_height = max(1280, height * 2)
             print(f"📐 Resizing: {width}x{height} → {new_width}x{new_height}")
             img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
         
-        # 2. Sharpness Enhance (धुंधलेपन को दूर करने के लिए इसे 1.02 से बढ़ाकर 1.4 किया गया)
+        # 2. SHARPNESS ENHANCE - INCREASED FOR BLUR REMOVAL
+        # Sharpness को 1.4 से बढ़ाकर 2.0 किया गया (40% से 100% तक)
         enhancer = ImageEnhance.Sharpness(img)
-        img = enhancer.enhance(1.4)  # ✅ चेहरे को बिल्कुल साफ और क्लियर करने के लिए 40% तीक्ष्णता बढ़ाएं
+        img = enhancer.enhance(2.0)  # ✅ Sharpness को 2x करें - Blur हटाने के लिए
         
-        # 3. Contrast Enhance
+        # 3. Apply Unsharp Mask for even better clarity
+        img = img.filter(ImageFilter.UnsharpMask(radius=2, percent=150, threshold=3))
+        
+        # 4. Contrast Enhance
         enhancer = ImageEnhance.Contrast(img)
-        img = enhancer.enhance(1.05)  
+        img = enhancer.enhance(1.15)  # थोड़ा कंट्रास्ट बढ़ाएं
         
-        # 4. High Quality Save
-        img.save(image_path, quality=95, optimize=True, format='JPEG')
+        # 5. Color Enhance - slight boost for vibrancy
+        enhancer = ImageEnhance.Color(img)
+        img = enhancer.enhance(1.1)
+        
+        # 6. High Quality Save with less compression
+        img.save(image_path, quality=98, optimize=True, format='JPEG', subsampling=0)
         new_size = os.path.getsize(image_path)
         print(f"✅ Enhanced! New Size: {new_size/1024:.1f} KB")
         return True
@@ -358,11 +377,11 @@ def check_image_quality(image_path):
             print("❌ File exists नहीं है!")
             return False
         
-        file_size = os.path.getsize(image_path)
+        file_size = os.getsize(image_path)
         print(f"📊 File Size: {file_size/1024:.1f} KB")
         
-        if file_size < 10000:  
-            print("❌ File Size बहुत छोटी है! (< 10KB)")
+        if file_size < 50000:  # Minimum 50KB for quality image
+            print("❌ File Size बहुत छोटी है! (< 50KB)")
             return False
         
         try:
@@ -371,7 +390,7 @@ def check_image_quality(image_path):
             width, height = img.size
             print(f"📐 Resolution: {width}x{height}")
             
-            if width < 512 or height < 512:
+            if width < 1024 or height < 1024:
                 print(f"❌ Resolution बहुत कम है! ({width}x{height})")
                 return False
             
@@ -380,7 +399,7 @@ def check_image_quality(image_path):
             return True
             
         except ImportError:
-            if file_size > 10000:
+            if file_size > 50000:
                 return True
             else:
                 return False
@@ -522,7 +541,7 @@ def main():
             print("❌ फोटो नहीं बन पाई!")
             return False
         
-        # ✅ STEP 2.5: Photo Quality Check
+        # ✅ STEP 2.5: Photo Quality Check with higher threshold
         print("\n📷 STEP 2.5: Photo Quality Check...")
         quality_ok = check_image_quality(image_path)
         
