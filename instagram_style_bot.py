@@ -5,6 +5,16 @@ import random
 import requests
 import urllib.parse
 from datetime import datetime
+from requests.adapters import HTTPAdapter
+from urllib3.util import Retry
+
+# ============================================
+# 🌐 GITHUB Actions के लिए IPv4-Force DNS पैच
+# (Hugging Face DNS Connection Error को पूरी तरह ठीक करने के लिए)
+# ============================================
+import urllib3.util.connection as urllib3_connection
+urllib3_connection.HAS_IPV6 = False
+
 from playwright.sync_api import sync_playwright
 
 # ============================================
@@ -25,6 +35,20 @@ if not FB_PAGE_ID or not FB_ACCESS_TOKEN:
 
 print(f"✅ Target: @{TARGET_PROFILE}")
 print(f"✅ Facebook Page: {FB_PAGE_ID[:3]}***")
+
+# ============================================
+# 🌐 मजबूत नेटवर्क सेशन सेटअप
+# ============================================
+session = requests.Session()
+retry_strategy = Retry(
+    total=5,
+    backoff_factor=2,
+    status_forcelist=[429, 500, 502, 503, 504],
+    raise_on_status=False
+)
+adapter = HTTPAdapter(max_retries=retry_strategy)
+session.mount("https://", adapter)
+session.mount("http://", adapter)
 
 # ============================================
 # 🎨 MULTIPLE PROMPTS (बेहतर चेहरे और क्वालिटी के लिए)
@@ -148,54 +172,132 @@ def learn_style_from_instagram():
     return selected_prompt
 
 # ============================================
-# 🎨 2. AI से PHOTO GENERATE करें (High Quality)
+# 🎨 2. HUGGING FACE से PHOTO GENERATE करें (Playground v2.5)
 # ============================================
+
+def generate_ai_image_hf(prompt_text, model_id="playgroundai/playground-v2.5-1024px-aesthetic", filename="generated_photo.jpg"):
+    """
+    Hugging Face Mirror का उपयोग करके Playground v2.5 से फोटो जनरेट करें
+    """
+    if not HF_TOKEN:
+        print("⚠️ HF_TOKEN नहीं मिला! Hercai V3 बैकअप पर जा रहा हूँ...")
+        return None
+        
+    print(f"🚀 Hugging Face Mirror से {model_id} मॉडल द्वारा जनरेट कर रहा हूँ...")
+    api_url = f"https://api-inference.hf-mirror.com/models/{model_id}"
+    headers = {"Authorization": f"Bearer {HF_TOKEN}"}
+    
+    payload = {
+        "inputs": prompt_text,
+        "parameters": {
+            "width": 1024,
+            "height": 1024
+        }
+    }
+    
+    try:
+        response = session.post(api_url, headers=headers, json=payload, timeout=120)
+        
+        # यदि मॉडल लोड हो रहा है, तो प्रतीक्षा करें
+        if response.status_code == 503:
+            estimated_time = response.json().get("estimated_time", 20)
+            print(f"⏳ मॉडल लोड हो रहा है, {estimated_time:.1f} सेकंड प्रतीक्षा कर रहा हूँ...")
+            time.sleep(min(estimated_time, 30))
+            response = session.post(api_url, headers=headers, json=payload, timeout=120)
+            
+        if response.status_code == 200 and len(response.content) > 10000:
+            with open(filename, 'wb') as f:
+                f.write(response.content)
+            print("✅ Hugging Face (Playground v2.5) से फोटो सफलतापूर्वक डाउनलोड हो गई!")
+            return filename
+        else:
+            print(f"❌ HF Model Error: {response.status_code}")
+            return None
+    except Exception as e:
+        print(f"❌ HF Mirror Connection Error: {e}")
+        return None
+
+
+def generate_ai_hercai(prompt_text, filename="generated_photo.jpg"):
+    """
+    Hercai V3 (Stable Diffusion XL) - 100% मुफ्त लाइव जनरेशन (चेहरे और हाथों के लिए बेस्ट)
+    """
+    print("🚀 [लेयर 2] Hercai V3 (Stable Diffusion XL) से लाइव फोटो बना रहा हूँ...")
+    url = "https://hercai.onrender.com/v3/hercai"
+    
+    payload = {
+        "prompt": prompt_text,
+        "model": "v3"  # v3 मॉडल SDXL है जो चेहरे और शरीर को बिल्कुल असली दिखाता है
+    }
+    
+    try:
+        response = session.post(url, json=payload, timeout=90)
+        if response.status_code == 200:
+            data = response.json()
+            img_url = data.get("reply")  # Hercai जनरेट की गई इमेज का सीधा लिंक 'reply' में देता है
+            
+            if img_url:
+                print("📥 फोटो जनरेट हो गई! डाउनलोड कर रहा हूँ...")
+                img_response = session.get(img_url, timeout=90)
+                if img_response.status_code == 200:
+                    with open(filename, 'wb') as f:
+                        f.write(img_response.content)
+                    print("✅ Hercai V3 से हाई-क्वालिटी फोटो डाउनलोड हो गई!")
+                    return filename
+    except Exception as e:
+        print(f"❌ Hercai V3 जनरेशन विफल: {e}")
+    return None
+
 
 def generate_ai_image(prompt_text, filename="generated_photo.jpg"):
     """
-    FLUX AI से हाई-क्वालिटी फोटो जनरेट करें
+    3-लेयर इमेज जनरेटर: 
+    1. पहले Playground v2.5 (Hugging Face) का प्रयास
+    2. विफल होने पर Hercai V3 (SDXL) का प्रयास
+    3. अंत में Pollinations (Flux-Realism) पर स्विच
     """
-    print("🎨 AI से High Quality फोटो बना रहा हूँ...")
+    print("\n🎨 [इमेज जनरेटर] 3-लेयर प्रक्रिया शुरू हो रही है...")
     
-    # सरल और साफ प्रॉम्प्ट
+    # LAYER 1: Playground v2.5 (Hugging Face Mirror)
+    image_path = generate_ai_image_hf(prompt_text, "playgroundai/playground-v2.5-1024px-aesthetic", filename)
+    if image_path:
+        enhance_image_quality(image_path)
+        return image_path
+        
+    # LAYER 2: Hercai V3 (Stable Diffusion XL)
+    image_path = generate_ai_hercai(prompt_text, filename)
+    if image_path:
+        enhance_image_quality(image_path)
+        return image_path
+
+    # LAYER 3: Pollinations (Flux-Realism)
+    print("🔄 [लेयर 3] पोलिनेशंस बैकअप सर्वर पर स्विच कर रहा हूँ...")
     clean_prompt = prompt_text.strip().replace('\n', ' ').replace('  ', ' ')
-    encoded_prompt = urllib.parse.quote(clean_prompt[:200])
+    encoded_prompt = urllib.parse.quote(clean_prompt[:250])
     
-    # ✅ चेहरे की स्पष्टता के लिए स्थिर रिज़ॉल्यूशन (1024x1280) का उपयोग
     flux_url = (
         f"https://image.pollinations.ai/prompt/{encoded_prompt}"
-        f"?width=1024&height=1280"  # ✅ चेहरे की विकृति को रोकने के लिए सुधरा हुआ आकार
-        f"&model=flux"
+        f"?width=1024&height=1280"  
+        f"&model=flux-realism"  # यथार्थवादी चेहरे के लिए स्पेशल बैकअप मॉडल
         f"&nologo=true"
         f"&seed={random.randint(1, 9999999)}"
-        f"&quality=high"  
-        f"&enhance=true"  
+        f"&quality=high"
+        f"&enhance=false"
     )
     
     try:
-        print("⏳ 30-60 सेकंड लग सकते हैं...")
-        response = requests.get(flux_url, timeout=180)
-        
-        if response.status_code == 200:
-            content_size = len(response.content)
-            if content_size > 50000:
-                with open(filename, 'wb') as f:
-                    f.write(response.content)
-                print(f"✅ फोटो बन गई! ({content_size/1024:.1f} KB)")
-                
-                # ✅ Image Enhance
-                enhance_image_quality(filename)
-                return filename
-            else:
-                print(f"⚠️ फोटो बहुत छोटी है ({content_size} bytes)")
-                return generate_ai_image_simple(filename)
-        else:
-            print(f"❌ AI Error: {response.status_code}")
-            return generate_ai_image_simple(filename)
-            
+        response = session.get(flux_url, timeout=120)
+        if response.status_code == 200 and len(response.content) > 50000:
+            with open(filename, 'wb') as f:
+                f.write(response.content)
+            print("✅ पोलिनेशंस बैकअप से फोटो सफलतापूर्वक जनरेट हो गई!")
+            enhance_image_quality(filename)
+            return filename
     except Exception as e:
-        print(f"❌ AI Error: {e}")
-        return generate_ai_image_simple(filename)
+        print(f"❌ पोलिनेशंस बैकअप सर्वर विफल: {e}")
+        
+    return create_placeholder_image(filename)
+
 
 def generate_ai_image_simple(filename="generated_photo.jpg"):
     """
@@ -204,35 +306,17 @@ def generate_ai_image_simple(filename="generated_photo.jpg"):
     print("🔄 सरल प्रॉम्प्ट के साथ Retry कर रहा हूँ...")
     
     simple_prompts = [
-        "Beautiful Indian bride in traditional red dress, symmetrical face, clear eyes, professional photography",
+        "Beautiful Indian bride in traditional red dress, symmetrical face, clear eyes, professional photography, realistic skin",
         "Stunning Indian woman in saree, symmetrical facial features, realistic eyes, professional portrait",
         "Glamorous Bollywood actress portrait, symmetrical face, professional photography, studio lighting",
         "Elegant Indian woman in traditional jewelry, detailed face, soft lighting, professional photo"
     ]
     
     simple_prompt = random.choice(simple_prompts)
-    encoded = urllib.parse.quote(simple_prompt)
-    
-    url = f"https://image.pollinations.ai/prompt/{encoded}?width=1024&height=1280&model=flux&nologo=true&quality=high&enhance=true"
-    
-    try:
-        response = requests.get(url, timeout=180)
-        if response.status_code == 200 and len(response.content) > 50000:
-            with open(filename, 'wb') as f:
-                f.write(response.content)
-            print(f"✅ Retry Success! ({len(response.content)/1024:.1f} KB)")
-            enhance_image_quality(filename)
-            return filename
-    except:
-        pass
-    
-    print("⚠️ Placeholder Image बना रहा हूँ...")
-    return create_placeholder_image(filename)
+    return generate_ai_image(simple_prompt, filename)
+
 
 def create_placeholder_image(filename="placeholder.jpg"):
-    """
-    अगर AI काम न करे तो Placeholder Image बनाएं
-    """
     try:
         from PIL import Image, ImageDraw, ImageFont
         
@@ -279,11 +363,11 @@ def enhance_image_quality(image_path):
         
         # 2. Sharpness Enhance (चेहरे की त्वचा को प्राकृतिक रखने के लिए इसे कम किया गया)
         enhancer = ImageEnhance.Sharpness(img)
-        img = enhancer.enhance(1.1)  # 10% Sharpness Increase (प्राकृतिक लुक के लिए)
+        img = enhancer.enhance(1.02)  # चेहरे के लुक को प्राकृतिक बनाए रखने के लिए हल्का सुधार
         
         # 3. Contrast Enhance
         enhancer = ImageEnhance.Contrast(img)
-        img = enhancer.enhance(1.05)  # 5% Contrast Increase
+        img = enhancer.enhance(1.02)  
         
         # 4. High Quality Save
         img.save(image_path, quality=95, optimize=True, format='JPEG')
@@ -300,64 +384,38 @@ def enhance_image_quality(image_path):
 # ============================================
 
 def check_image_quality(image_path):
-    """
-    Photo Quality Check - Resolution, Size, Format
-    """
     print("📷 Photo Quality Check कर रहा हूँ...")
     
     try:
-        # Check if file exists
         if not os.path.exists(image_path):
             print("❌ File exists नहीं है!")
             return False
         
-        # File Size Check
         file_size = os.path.getsize(image_path)
         print(f"📊 File Size: {file_size/1024:.1f} KB")
         
-        if file_size < 10000:  # 10KB से कम
+        if file_size < 10000:  
             print("❌ File Size बहुत छोटी है! (< 10KB)")
             return False
         
-        if file_size < 50000:  # 50KB से कम - Warning
-            print("⚠️ File Size थोड़ी छोटी है ( < 50KB)")
-        
-        # Try to open with PIL
         try:
             from PIL import Image
             img = Image.open(image_path)
             width, height = img.size
             print(f"📐 Resolution: {width}x{height}")
             
-            # Resolution Check
             if width < 512 or height < 512:
                 print(f"❌ Resolution बहुत कम है! ({width}x{height})")
                 return False
             
-            # Format Check
-            print(f"📁 Format: {img.format}")
-            
-            # Check if image is valid
             img.verify()
             print("✅ Image Valid है!")
-            
-            # Reopen after verify
-            img = Image.open(image_path)
-            
-            # Color Mode Check
-            print(f"🎨 Color Mode: {img.mode}")
-            
-            print("✅ Photo Quality Check Passed!")
             return True
             
         except ImportError:
-            print("⚠️ PIL installed नहीं है, basic check कर रहा हूँ...")
-            # Basic check without PIL
             if file_size > 10000:
-                print(f"✅ File Size ठीक है: {file_size/1024:.1f} KB")
                 return True
             else:
-                print("❌ File Size बहुत छोटी है!")
                 return False
                 
     except Exception as e:
@@ -369,9 +427,6 @@ def check_image_quality(image_path):
 # ============================================
 
 def generate_caption():
-    """
-    Viral Instagram-style Caption
-    """
     hour = datetime.now().hour
     if 6 <= hour < 12:
         time_text = "🌅 Good Morning! Today's trending beauty"
@@ -431,11 +486,7 @@ def generate_caption():
 # ============================================
 
 def post_to_facebook(image_path, caption):
-    """
-    Facebook Page पर फोटो पोस्ट करें
-    """
     print("📤 Facebook पर पोस्ट कर रहा हूँ...")
-    
     fb_url = f"https://graph.facebook.com/{FB_PAGE_ID}/photos"
     
     payload = {
@@ -470,7 +521,6 @@ def post_to_facebook(image_path, caption):
 # ============================================
 
 def cleanup_files(*files):
-    """टेम्परेरी फ़ाइल्स डिलीट करें"""
     for file in files:
         if file and os.path.exists(file):
             try:
@@ -484,10 +534,8 @@ def cleanup_files(*files):
 # ============================================
 
 def main():
-    """पूरा बॉट चलाएं"""
-    
     print("\n" + "="*60)
-    print("🚀 INSTAGRAM STYLE AI BOT START")
+    print("🚀 INSTAGRAM STYLE AI BOT START (3-LAYER ENGINE)")
     print("="*60)
     
     start_time = time.time()
