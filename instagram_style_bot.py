@@ -27,14 +27,15 @@ FB_PAGE_ID = os.environ.get("FB_PAGE_ID")
 FB_ACCESS_TOKEN = os.environ.get("FB_ACCESS_TOKEN")
 GEMINI_API = os.environ.get("GEMINI_API")
 HF_TOKEN = os.environ.get("HF_TOKEN")
+REPLICATE_API_TOKEN = os.environ.get("REPLICATE_API_TOKEN") # ✅ रीप्लिकेट सीक्रेट टोकन
 
 # Check Credentials
 if not FB_PAGE_ID or not FB_ACCESS_TOKEN:
     print("❌ Facebook Credentials नहीं मिले!")
     sys.exit(1)
 
-print(f"✅ Target: @{TARGET_PROFILE}")
-print(f"✅ Facebook Page: {FB_PAGE_ID[:3]}***")
+print(f"Target: @{TARGET_PROFILE}")
+print(f"Facebook Page: {FB_PAGE_ID[:3]}***")
 
 # ============================================
 # 🌐 मजबूत नेटवर्क सेशन सेटअप
@@ -51,7 +52,7 @@ session.mount("https://", adapter)
 session.mount("http://", adapter)
 
 # ============================================
-# 🎨 MULTIPLE PROMPTS (कमर तक का शॉट और अत्यंत साफ चेहरे के लिए)
+# 🎨 MULTIPLE PROMPTS (कमर तक की फोटो और अत्यंत साफ चेहरे के लिए)
 # ============================================
 
 PROMPTS = [
@@ -117,9 +118,6 @@ PROMPTS = [
 ]
 
 def create_default_prompt():
-    """
-    Randomly select a prompt for variety
-    """
     return random.choice(PROMPTS)
 
 # ============================================
@@ -127,27 +125,97 @@ def create_default_prompt():
 # ============================================
 
 def learn_style_from_instagram():
-    """
-    Instagram Login Skip - Directly Use Default Prompt
-    """
     print(f"📸 Instagram Login Skip - Using Manual Style Prompts")
     print(f"🎯 Target Profile: @{TARGET_PROFILE}")
-    print(f"🔄 Random Prompt Selected for Variety")
-    
-    # Return random prompt from PROMPTS list
     selected_prompt = random.choice(PROMPTS)
     print(f"✅ Selected Prompt: {selected_prompt[:100]}...")
-    
     return selected_prompt
 
 # ============================================
-# 🎨 2. HUGGING FACE से PHOTO GENERATE करें (Playground v2.5)
+# ☁️ 2. JUGAD: फोटो को लाइव यूआरएल पर अपलोड करना (Replicate के लिए)
+# ============================================
+
+def upload_to_tmpfiles(image_path):
+    """
+    फोटो को Replicate API में भेजने के लिए 1 सेकंड के लिए लाइव यूआरएल बनाना
+    """
+    print("⏳ फोटो को सुरक्षित क्लाउड होस्ट पर अपलोड कर रहा हूँ...")
+    try:
+        with open(image_path, 'rb') as f:
+            response = session.post("https://tmpfiles.org/api/v1/upload", files={"file": f}, timeout=60)
+        if response.status_code == 200:
+            data = response.json()
+            file_url = data.get("data", {}).get("url")
+            # डायरेक्ट इमेज डाउनलोड लिंक
+            direct_url = file_url.replace("https://tmpfiles.org/", "https://tmpfiles.org/dl/")
+            print("✅ अस्थायी क्लाउड इमेज यूआरएल तैयार है!")
+            return direct_url
+    except Exception as e:
+        print(f"⚠️ क्लाउड अपलोड त्रुटि: {e}")
+    return None
+
+# ============================================
+# 🎭 3. REPLICATE GFPGAN (TencentARC) - चेहरे को 100% साफ करना
+# ============================================
+
+def restore_face_replicate(image_url, filename="generated_photo.jpg"):
+    """
+    Replicate GFPGAN v1.4 का उपयोग करके चेहरे के पिक्सल्स को असली जैसा पैना और साफ बनाना
+    """
+    if not REPLICATE_API_TOKEN:
+        print("⚠️ REPLICATE_API_TOKEN नहीं मिला! रीस्टोरेशन स्टेप बायपास कर रहा हूँ...")
+        return False
+        
+    print("🚀 Replicate GFPGAN से चेहरा रीस्टोर और पैना (Sharpen) कर रहा हूँ...")
+    headers = {
+        "Authorization": f"Token {REPLICATE_API_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "version": "92836085e34d856012c05f1890d6d405ab8854b0c400b8296996b7cd3d02f2b1", # GFPGAN v1.4 Hash
+        "input": {
+            "img": image_url,
+            "version": "v1.4",
+            "scale": 2
+        }
+    }
+    
+    try:
+        # Prediction शुरू करें
+        response = session.post("https://api.replicate.com/v1/predictions", headers=headers, json=payload, timeout=60)
+        if response.status_code == 201:
+            prediction = response.json()
+            poll_url = prediction["urls"]["get"]
+            
+            # रिजल्ट तैयार होने तक प्रतीक्षा करें (अधिकतम 60 सेकंड)
+            print("⏳ चेहरे के विश्लेषण और पैनेपन की प्रक्रिया चालू है...")
+            for _ in range(30):
+                time.sleep(2)
+                status_resp = session.get(poll_url, headers=headers, timeout=30)
+                if status_resp.status_code == 200:
+                    status_data = status_resp.json()
+                    status = status_data.get("status")
+                    if status == "succeeded":
+                        output_url = status_data.get("output")
+                        # नई फोटो को सेव करें
+                        img_resp = session.get(output_url, timeout=60)
+                        if img_resp.status_code == 200:
+                            with open(filename, 'wb') as f:
+                                f.write(img_resp.content)
+                            print("🎉 सफलता! GFPGAN द्वारा पूरी तरह साफ किया गया यथार्थवादी चेहरा डाउनलोड हो गया!")
+                            return True
+                    elif status in ["failed", "canceled"]:
+                        print(f"❌ Replicate प्रक्रिया विफल: {status}")
+                        break
+    except Exception as e:
+        print(f"❌ GFPGAN रीस्टोरेशन एरर: {e}")
+    return False
+
+# ============================================
+# 🎨 4. MULTI-ENGINE GENERATOR (HF, Hercai, Pollinations)
 # ============================================
 
 def generate_ai_image_hf(prompt_text, model_id="playgroundai/playground-v2.5-1024px-aesthetic", filename="generated_photo.jpg"):
-    """
-    Hugging Face Mirror का उपयोग करके Playground v2.5 से फोटो जनरेट करें
-    """
     if not HF_TOKEN:
         print("⚠️ HF_TOKEN नहीं मिला! Hercai V3 बैकअप पर जा रहा हूँ...")
         return None
@@ -167,10 +235,9 @@ def generate_ai_image_hf(prompt_text, model_id="playgroundai/playground-v2.5-102
     try:
         response = session.post(api_url, headers=headers, json=payload, timeout=120)
         
-        # यदि मॉडल लोड हो रहा है, तो प्रतीक्षा करें
         if response.status_code == 503:
             estimated_time = response.json().get("estimated_time", 20)
-            print(f"⏳  मॉडल लोड हो रहा है, {estimated_time:.1f} सेकंड प्रतीक्षा कर रहा हूँ...")
+            print(f"⏳ मॉडल लोड हो रहा है, {estimated_time:.1f} सेकंड प्रतीक्षा कर रहा हूँ...")
             time.sleep(min(estimated_time, 30))
             response = session.post(api_url, headers=headers, json=payload, timeout=120)
             
@@ -179,31 +246,25 @@ def generate_ai_image_hf(prompt_text, model_id="playgroundai/playground-v2.5-102
                 f.write(response.content)
             print("✅ Hugging Face (Playground v2.5) से फोटो सफलतापूर्वक डाउनलोड हो गई!")
             return filename
-        else:
-            print(f"❌ HF Model Error: {response.status_code}")
-            return None
     except Exception as e:
         print(f"❌ HF Mirror Connection Error: {e}")
         return None
 
 
 def generate_ai_hercai(prompt_text, filename="generated_photo.jpg"):
-    """
-    Hercai V3 (Stable Diffusion XL) - 100% मुफ्त लाइव जनरेशन (चेहरे और हाथों के लिए बेस्ट)
-    """
     print("🚀 [लेयर 2] Hercai V3 (Stable Diffusion XL) से लाइव फोटो बना रहा हूँ...")
     url = "https://hercai.onrender.com/v3/hercai"
     
     payload = {
         "prompt": prompt_text + ", highly detailed, sharp focus, realistic face, 8k resolution, extreme details",
-        "model": "v3"  # v3 मॉडल SDXL है जो चेहरे और शरीर को बिल्कुल असली दिखाता है
+        "model": "v3"  
     }
     
     try:
         response = session.post(url, json=payload, timeout=90)
         if response.status_code == 200:
             data = response.json()
-            img_url = data.get("reply")  # Hercai जनरेट की गई इमेज का सीधा लिंक 'reply' में देता है
+            img_url = data.get("reply")  
             
             if img_url:
                 print("📥 फोटो जनरेट हो गई! डाउनलोड कर रहा हूँ...")
@@ -220,23 +281,18 @@ def generate_ai_hercai(prompt_text, filename="generated_photo.jpg"):
 
 def generate_ai_image(prompt_text, filename="generated_photo.jpg"):
     """
-    3-लेयर इमेज जनरेटर: 
-    1. पहले Playground v2.5 (Hugging Face) का प्रयास
-    2. विफल होने पर Hercai V3 (SDXL) का प्रयास
-    3. अंत में Pollinations (Flux-Realism) पर स्विच
+    3-लेयर इमेज जनरेटर
     """
     print("\n🎨 [इमेज जनरेटर] 3-लेयर प्रक्रिया शुरू हो रही है...")
     
-    # LAYER 1: Playground v2.5 (Hugging Face Mirror)
+    # LAYER 1: Playground v2.5
     image_path = generate_ai_image_hf(prompt_text, "playgroundai/playground-v2.5-1024px-aesthetic", filename)
     if image_path:
-        enhance_image_quality(image_path)
         return image_path
         
     # LAYER 2: Hercai V3 (Stable Diffusion XL)
     image_path = generate_ai_hercai(prompt_text, filename)
     if image_path:
-        enhance_image_quality(image_path)
         return image_path
 
     # LAYER 3: Pollinations (Flux-Realism)
@@ -247,7 +303,7 @@ def generate_ai_image(prompt_text, filename="generated_photo.jpg"):
     flux_url = (
         f"https://image.pollinations.ai/prompt/{encoded_prompt}"
         f"?width=1024&height=1280"  
-        f"&model=flux-realism"  # यथार्थवादी चेहरे के लिए स्पेशल बैकअप मॉडल
+        f"&model=flux-realism"  
         f"&nologo=true"
         f"&seed={random.randint(1, 9999999)}"
         f"&quality=high"
@@ -260,7 +316,6 @@ def generate_ai_image(prompt_text, filename="generated_photo.jpg"):
             with open(filename, 'wb') as f:
                 f.write(response.content)
             print("✅ पोलिनेशंस बैकअप से फोटो सफलतापूर्वक जनरेट हो गई!")
-            enhance_image_quality(filename)
             return filename
     except Exception as e:
         print(f"❌ पोलिनेशंस बैकअप सर्वर विफल: {e}")
@@ -269,26 +324,18 @@ def generate_ai_image(prompt_text, filename="generated_photo.jpg"):
 
 
 def generate_ai_image_simple(filename="generated_photo.jpg"):
-    """
-    सरल प्रॉम्प्ट के साथ Retry
-    """
     print("🔄 सरल प्रॉम्प्ट के साथ Retry कर रहा हूँ...")
-    
     simple_prompts = [
         "Beautiful Indian bride, waist-up portrait, traditional red dress, symmetrical face, razor-sharp focus on face, realistic skin",
         "Stunning Indian woman in saree, waist-up portrait, detailed symmetrical face, clear eyes, professional portrait, sharp focus",
         "Glamorous Bollywood actress portrait, waist-up shot, symmetrical face, sharp focus, professional photography, studio lighting",
         "Elegant Indian woman in traditional jewelry, waist-up portrait, highly detailed face, sharp focus, professional photo"
     ]
-    
     simple_prompt = random.choice(simple_prompts)
     return generate_ai_image(simple_prompt, filename)
 
 
 def create_placeholder_image(filename="placeholder.jpg"):
-    """
-    यदि सब कुछ विफल हो जाता है, तो एआई द्वारा लाइव पोलिनेशन्स बैकअप जनरेट किया जाएगा
-    """
     print("🔄 [इमरजेंसी बैकअप] लाइव पोलिनेशन्स एचडी बैकअप जनरेट कर रहा हूँ...")
     backup_prompt = "Stunning Indian woman standing gracefully, waist-up portrait, detailed saree, realistic face, sharp focus"
     encoded = urllib.parse.quote(backup_prompt)
@@ -299,12 +346,10 @@ def create_placeholder_image(filename="placeholder.jpg"):
         if response.status_code == 200:
             with open(filename, 'wb') as f:
                 f.write(response.content)
-            enhance_image_quality(filename)
             return filename
     except:
         pass
         
-    # चरम स्थिति में डार्क इमेज
     try:
         from PIL import Image
         img = Image.new('RGB', (1024, 1280), color=(30, 30, 40))
@@ -321,10 +366,10 @@ def create_placeholder_image(filename="placeholder.jpg"):
 
 def enhance_image_quality(image_path):
     """
-    Image Quality Enhance - धुंधलापन (Blur) पूरी तरह समाप्त करने और 1536x1920 (Ultra HD) करने के लिए
+    Image Quality Enhance - UnsharpMask फोटोग्राफी फ़िल्टर के साथ (चेहरे और ज्वेलरी को क्रिस्टल-क्लियर बनाने के लिए)
     """
     try:
-        from PIL import Image, ImageEnhance
+        from PIL import Image, ImageEnhance, ImageFilter
         
         img = Image.open(image_path)
         width, height = img.size
@@ -336,12 +381,15 @@ def enhance_image_quality(image_path):
         print(f"📐 Scaling to Ultra HD: {width}x{height} → {new_width}x{new_height}")
         img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
         
-        # 🌀 [3-पास प्रोग्रेसिव एन्हांसमेंट]
-        # लगातार 3 बार 1.3 गुना शार्पनेस बढ़ाकर फोटो को सुपर-क्लियर और वास्तविक बनाना
-        print("⏳ 3-Pass progressive sharpening running...")
-        for i in range(1, 4):  # 1, 2, 3 बार प्रोसेस करेगा
+        # 2. 🌀 [Unsharp Mask] फोटोग्राफी डिटेलिंग फ़िल्टर
+        print("⏳ Applying progressive photographic Unsharp Mask...")
+        img = img.filter(ImageFilter.UnsharpMask(radius=1.5, percent=120, threshold=2))
+        
+        # 3. 🌀 [3-पास प्रोग्रेसिव एन्हांसमेंट]
+        print("⏳ 3-Pass progressive sharpness tuning...")
+        for i in range(1, 4):  
             sharp_enhancer = ImageEnhance.Sharpness(img)
-            img = sharp_enhancer.enhance(1.3)  # ✅ चेहरे और शरीर को पूरी तरह स्पष्ट करने के लिए 30% तीक्ष्णता बढ़ाएं
+            img = sharp_enhancer.enhance(1.1)  
             
             contrast_enhancer = ImageEnhance.Contrast(img)
             img = contrast_enhancer.enhance(1.02)
@@ -350,7 +398,7 @@ def enhance_image_quality(image_path):
         # 4. High Quality Save
         img.save(image_path, quality=95, optimize=True, format='JPEG')
         new_size = os.path.getsize(image_path)
-        print(f"✅ 3-Pass Ultra HD Enhancement Done! New Size: {new_size/1024:.1f} KB")
+        print(f"✅ 3-Pass Ultra HD UnsharpMask Done! New Size: {new_size/1024:.1f} KB")
         return True
         
     except Exception as e:
@@ -363,7 +411,6 @@ def enhance_image_quality(image_path):
 
 def check_image_quality(image_path):
     print("📷 Photo Quality Check कर रहा हूँ...")
-    
     try:
         if not os.path.exists(image_path):
             print("❌ File exists नहीं है!")
@@ -373,7 +420,6 @@ def check_image_quality(image_path):
         print(f"📊 File Size: {file_size/1024:.1f} KB")
         
         if file_size < 10000:  
-            print("❌ File Size बहुत छोटी है! (< 10KB)")
             return False
         
         try:
@@ -382,9 +428,7 @@ def check_image_quality(image_path):
             width, height = img.size
             print(f"📐 Resolution: {width}x{height}")
             
-            # ✅ यदि फोटो 512 से बड़ी है, तो हम इसे स्वीकार करेंगे और 'enhance_image_quality' में 1536x1920 में बदलेंगे
             if width < 512 or height < 512:
-                print(f"❌ इमेज का आकार अत्यंत छोटा है ({width}x{height})! री-ट्राई सक्रिय...")
                 return False
             
             img.verify()
@@ -396,13 +440,11 @@ def check_image_quality(image_path):
                 return True
             else:
                 return False
-                
-    except Exception as e:
-        print(f"❌ Quality Check Error: {e}")
+    except:
         return False
 
 # ============================================
-# 📝 3. CAPTION GENERATE करें (FIXED EMOJIS)
+# 📝 5. CAPTION GENERATE करें
 # ============================================
 
 def generate_caption():
@@ -461,7 +503,7 @@ def generate_caption():
     return random.choice(captions)
 
 # ============================================
-# 📤 4. FACEBOOK पर POST करें
+# 📤 6. FACEBOOK पर POST करें
 # ============================================
 
 def post_to_facebook(image_path, caption):
@@ -496,7 +538,7 @@ def post_to_facebook(image_path, caption):
         return None
 
 # ============================================
-# 🧹 5. CLEANUP
+# 🧹 7. CLEANUP
 # ============================================
 
 def cleanup_files(*files):
@@ -509,22 +551,20 @@ def cleanup_files(*files):
                 pass
 
 # ============================================
-# 🚀 6. MAIN BOT
+# 🚀 8. MAIN BOT
 # ============================================
 
 def main():
     print("\n" + "="*60)
-    print("🚀 INSTAGRAM STYLE AI BOT START (3-PASS ULTRA HD ENGINE)")
+    print("🚀 INSTAGRAM STYLE AI BOT START (3-PASS ULTRA HD + GFPGAN ENGINE)")
     print("="*60)
     
     start_time = time.time()
     
     try:
-        # STEP 1: Style Select (Instagram Skip)
+        # STEP 1: Style Select
         print("\n📸 STEP 1: Style Select...")
         style_prompt = learn_style_from_instagram()
-        
-        print(f"✅ Selected Style: {style_prompt[:100]}...")
         
         # STEP 2: AI से फोटो बनाएं
         print("\n🎨 STEP 2: AI से फोटो बना रहा हूँ...")
@@ -533,27 +573,43 @@ def main():
         if not image_path:
             print("❌ फोटो नहीं बन पाई!")
             return False
+            
+        # ✅ [GFPGAN चेहरा रीस्टोरेशन बाईपास]
+        # इमेज जनरेट होने के बाद, हम उसे Tmpfiles पर अपलोड करके Replicate GFPGAN से चेहरा साफ करेंगे
+        if REPLICATE_API_TOKEN:
+            live_url = upload_to_tmpfiles(image_path)
+            if live_url:
+                success_restore = restore_face_replicate(live_url, image_path)
+                if not success_restore:
+                    print("⚠️ GFPGAN विफल रहा, मूल फोटो का उपयोग कर रहा हूँ...")
         
-        # ✅ STEP 2.5: Photo Quality Check
-        print("\n📷 STEP 2.5: Photo Quality Check...")
+        # ✅ STEP 2.5: Image Quality Enhance & Polish
+        # अब फोटो को 1536x1920 (2K Ultra HD) आकार में बदल कर UnsharpMask और 3-पास शार्पनेस लागू करेंगे
+        enhance_image_quality(image_path)
+        
+        # STEP 2.8: Photo Quality Check
+        print("\n📷 STEP 2.8: Photo Quality Check...")
         quality_ok = check_image_quality(image_path)
         
         if not quality_ok:
             print("⚠️ Quality Check Fail हुई! नई फोटो बना रहा हूँ...")
-            # Retry with simple prompt
             image_path = generate_ai_image_simple("retry_photo.jpg")
             if image_path:
-                # Check quality again
+                # यदि री-ट्राई इमेज बनी है, तो उस पर भी GFPGAN और HD Polish लागू करें
+                if REPLICATE_API_TOKEN:
+                    live_url = upload_to_tmpfiles(image_path)
+                    if live_url:
+                        restore_face_replicate(live_url, image_path)
+                enhance_image_quality(image_path)
+                
                 quality_ok = check_image_quality(image_path)
                 if not quality_ok:
-                    print("⚠️ Quality Check फिर Fail हुई! Placeholder use कर रहा हूँ...")
                     image_path = create_placeholder_image("placeholder_final.jpg")
         
         # STEP 3: कैप्शन बनाएं
         print("\n📝 STEP 3: कैप्शन बना रहा हूँ...")
         caption = generate_caption()
         print(f"✅ कैप्शन तैयार ({len(caption)} अक्षर)")
-        print(f"📝 Caption Preview: {caption[:150]}...")
         
         # STEP 4: Facebook पर पोस्ट करें
         print("\n📤 STEP 4: Facebook पर पोस्ट कर रहा हूँ...")
@@ -568,7 +624,7 @@ def main():
         if post_id:
             print("\n" + "="*60)
             print("🎉 SUCCESS! सब कुछ हो गया!")
-            print(f"⏱️ कुल समय: {elapsed:.2f}盛कंड")
+            print(f"⏱️ कुल समय: {elapsed:.2f} सेकंड")
             print(f"📱 Post ID: {post_id}")
             print("="*60)
             return True
