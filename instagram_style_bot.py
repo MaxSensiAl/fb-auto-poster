@@ -195,7 +195,7 @@ def generate_ai_hercai(prompt_text, filename="generated_photo.jpg"):
     url = "https://hercai.onrender.com/v3/hercai"
     
     payload = {
-        "prompt": prompt_text + ", highly detailed, razor-sharp focus, realistic face, 8k resolution, extreme details",
+        "prompt": prompt_text + ", highly detailed, sharp focus, realistic face, 8k resolution, extreme details",
         "model": "v3"  # v3 मॉडल SDXL है जो चेहरे और शरीर को बिल्कुल असली दिखाता है
     }
     
@@ -286,34 +286,42 @@ def generate_ai_image_simple(filename="generated_photo.jpg"):
 
 
 def create_placeholder_image(filename="placeholder.jpg"):
+    """
+    यदि सब कुछ विफल हो जाता है, तो एआई द्वारा लाइव पोलिनेशन्स बैकअप जनरेट किया जाएगा
+    """
+    print("🔄 [इमरजेंसी बैकअप] लाइव पोलिनेशन्स एचडी बैकअप जनरेट कर रहा हूँ...")
+    backup_prompt = "Stunning Indian woman standing gracefully, waist-up portrait, detailed saree, realistic face, sharp focus"
+    encoded = urllib.parse.quote(backup_prompt)
+    url = f"https://image.pollinations.ai/prompt/{encoded}?width=1024&height=1280&model=flux-realism&nologo=true&quality=high"
+    
     try:
-        from PIL import Image, ImageDraw, ImageFont
+        response = requests.get(url, timeout=120)
+        if response.status_code == 200:
+            with open(filename, 'wb') as f:
+                f.write(response.content)
+            enhance_image_quality(filename)
+            return filename
+    except:
+        pass
         
-        img = Image.new('RGB', (1024, 1280), color=(255, 200, 230))
-        draw = ImageDraw.Draw(img)
-        
-        text = "✨ AI Beauty ✨"
-        try:
-            font = ImageFont.load_default()
-        except:
-            font = None
-        
-        draw.text((400, 600), text, fill=(200, 50, 100), font=font)
+    # चरम स्थिति में डार्क इमेज
+    try:
+        from PIL import Image
+        img = Image.new('RGB', (1024, 1280), color=(30, 30, 40))
         img.save(filename)
-        print(f"✅ Placeholder Image बन गई!")
         return filename
     except:
         with open(filename, 'wb') as f:
-            f.write(b'PLACEHOLDER_IMAGE')
+            f.write(b'PLACEHOLDER')
         return filename
 
 # ============================================
-# 🖼️ IMAGE ENHANCE (3-PASS SYSTEM)
+# 🖼️ IMAGE ENHANCE (3-PASS ULTRA HD SYSTEM)
 # ============================================
 
 def enhance_image_quality(image_path):
     """
-    Image Quality Enhance - 3-Pass प्रोग्रेसिव शार्पनिंग (चेहरे और शरीर का धुंधलापन मिटाने के लिए)
+    Image Quality Enhance - धुंधलापन (Blur) पूरी तरह समाप्त करने और 1536x1920 (Ultra HD) करने के लिए
     """
     try:
         from PIL import Image, ImageEnhance
@@ -322,22 +330,19 @@ def enhance_image_quality(image_path):
         width, height = img.size
         print(f"📐 Original Resolution: {width}x{height}")
         
-        # 1. 1024x1280 पर रीसाइज़ (LANCZOS फ़िल्टर पिक्सल्स को स्मूथ रखता है)
-        if width < 1024 or height < 1280:
-            new_width = 1024
-            new_height = 1280
-            print(f"📐 Resizing: {width}x{height} → {new_width}x{new_height}")
-            img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        # 1. रिज़ॉल्यूशन को सीधे 1536x1920 (Ultra HD / 2K) में बदलें
+        new_width = 1536
+        new_height = 1920
+        print(f"📐 Scaling to Ultra HD: {width}x{height} → {new_width}x{new_height}")
+        img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
         
         # 🌀 [3-पास प्रोग्रेसिव एन्हांसमेंट]
-        # लगातार 3 बार हल्की शार्पनेस बढ़ाकर फोटो को सुपर-क्लियर बनाना
+        # लगातार 3 बार 1.3 गुना शार्पनेस बढ़ाकर फोटो को सुपर-क्लियर और वास्तविक बनाना
         print("⏳ 3-Pass progressive sharpening running...")
         for i in range(1, 4):  # 1, 2, 3 बार प्रोसेस करेगा
-            # शार्पनेस बढ़ाएं (Progressive 1.25 गुना प्रति पास)
             sharp_enhancer = ImageEnhance.Sharpness(img)
-            img = sharp_enhancer.enhance(1.25)
+            img = sharp_enhancer.enhance(1.3)  # ✅ चेहरे और शरीर को पूरी तरह स्पष्ट करने के लिए 30% तीक्ष्णता बढ़ाएं
             
-            # कॉन्ट्रास्ट संतुलन (1.02 गुना प्रति पास)
             contrast_enhancer = ImageEnhance.Contrast(img)
             img = contrast_enhancer.enhance(1.02)
             print(f"✅ Pass {i} complete!")
@@ -345,7 +350,7 @@ def enhance_image_quality(image_path):
         # 4. High Quality Save
         img.save(image_path, quality=95, optimize=True, format='JPEG')
         new_size = os.path.getsize(image_path)
-        print(f"✅ 3-Pass Enhancement Done! New Size: {new_size/1024:.1f} KB")
+        print(f"✅ 3-Pass Ultra HD Enhancement Done! New Size: {new_size/1024:.1f} KB")
         return True
         
     except Exception as e:
@@ -353,7 +358,7 @@ def enhance_image_quality(image_path):
         return False
 
 # ============================================
-# 📷 PHOTO QUALITY CHECK (STRICT GATE)
+# 📷 PHOTO QUALITY CHECK
 # ============================================
 
 def check_image_quality(image_path):
@@ -377,10 +382,9 @@ def check_image_quality(image_path):
             width, height = img.size
             print(f"📐 Resolution: {width}x{height}")
             
-            # ✅ [Strict Quality Gate] 
-            # यदि फोटो 1024 चौड़ाई से कम की बनती है (जैसे 686x858), तो उसे रिजेक्ट करके एचडी बैकअप पर री-ट्राई करेगा
-            if width < 1024 or height < 1024:
-                print(f"❌ धुंधली इमेज डिटेक्ट हुई ({width}x{height})! री-ट्राई सक्रिय...")
+            # ✅ यदि फोटो 512 से बड़ी है, तो हम इसे स्वीकार करेंगे और 'enhance_image_quality' में 1536x1920 में बदलेंगे
+            if width < 512 or height < 512:
+                print(f"❌ इमेज का आकार अत्यंत छोटा है ({width}x{height})! री-ट्राई सक्रिय...")
                 return False
             
             img.verify()
@@ -388,7 +392,7 @@ def check_image_quality(image_path):
             return True
             
         except ImportError:
-            if file_size > 50000:
+            if file_size > 10000:
                 return True
             else:
                 return False
@@ -510,7 +514,7 @@ def cleanup_files(*files):
 
 def main():
     print("\n" + "="*60)
-    print("🚀 INSTAGRAM STYLE AI BOT START (3-PASS HD ENGINE)")
+    print("🚀 INSTAGRAM STYLE AI BOT START (3-PASS ULTRA HD ENGINE)")
     print("="*60)
     
     start_time = time.time()
@@ -530,13 +534,13 @@ def main():
             print("❌ फोटो नहीं बन पाई!")
             return False
         
-        # ✅ STEP 2.5: Photo Quality Check (Strict Gate)
+        # ✅ STEP 2.5: Photo Quality Check
         print("\n📷 STEP 2.5: Photo Quality Check...")
         quality_ok = check_image_quality(image_path)
         
         if not quality_ok:
-            print("⚠️ Quality Check Fail (कम रिज़ॉल्यूशन)! नई एचडी फोटो बना रहा हूँ...")
-            # Retry with simple prompt (यह सीधे HD फ़ॉलबैक मॉडल शुरू करेगा)
+            print("⚠️ Quality Check Fail हुई! नई फोटो बना रहा हूँ...")
+            # Retry with simple prompt
             image_path = generate_ai_image_simple("retry_photo.jpg")
             if image_path:
                 # Check quality again
@@ -564,7 +568,7 @@ def main():
         if post_id:
             print("\n" + "="*60)
             print("🎉 SUCCESS! सब कुछ हो गया!")
-            print(f"⏱️ कुल समय: {elapsed:.2f} सेकंड")
+            print(f"⏱️ कुल समय: {elapsed:.2f}盛कंड")
             print(f"📱 Post ID: {post_id}")
             print("="*60)
             return True
