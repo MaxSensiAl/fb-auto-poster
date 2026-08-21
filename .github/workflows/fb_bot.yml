@@ -17,13 +17,14 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: '3.10'
-    
+        cache: 'pip'  # ✅ कैशिंग जोड़ने से हर बार पैकेज इंस्टॉल होने में समय बचेगा
+
     - name: Install Dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        playwright install chromium  # ✅ Playwright ब्राउज़र इंस्टॉल
-    
+        # ❌ playwright install chromium लाइन को यहाँ से पूरी तरह हटा दिया गया है
+
     - name: Run AI Bot
       env:
         IG_USERNAME: ${{ secrets.IG_USERNAME }}
@@ -33,6 +34,6 @@ jobs:
         FB_ACCESS_TOKEN: ${{ secrets.FB_ACCESS_TOKEN }}
         GEMINI_API: ${{ secrets.GEMINI_API }}
         HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        REPLICATE_API_TOKEN: ${{ secrets.REPLICATE_API_TOKEN }}  # ✅ रीप्लिकेट टोकन यहाँ जोड़ दिया गया है
+        REPLICATE_API_TOKEN: ${{ secrets.REPLICATE_API_TOKEN }}
       run: |
         python instagram_style_bot.py
