@@ -9,7 +9,7 @@ from datetime import datetime
 from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
 from PIL import Image, ImageEnhance, ImageFilter, ImageOps
-import replicate  # ✅ Replicate SDK आयात किया गया
+import replicate  # ✅ Replicate SDK
 
 # ============================================
 # 📝 लॉगिंग सेटअप
@@ -165,23 +165,25 @@ def upload_image_for_replicate(image_path):
     return None
 
 # ============================================
-# 🎭 3. REPLICATE GFPGAN (SDK आधारित सुरक्षित संस्करण)
+# 🎭 3. REPLICATE GFPGAN (Explicit Version Tag v1.4)
 # ============================================
-def restore_face_replicate_sdk(image_url, filename="generated_photo.jpg"):
-    """Replicate SDK का उपयोग करके GFPGAN चलाना ताकि हैश एरर न आए"""
+def restore_face_replicate(image_url, filename="generated_photo.jpg"):
+    """
+    Replicate GFPGAN v1.4 - Explicit Version Tag के साथ (SDK 1.0.7+)
+    """
     if not REPLICATE_API_TOKEN:
         logger.warning("⚠️ REPLICATE_API_TOKEN नहीं मिला! रीस्टोरेशन स्किप।")
         return False
         
-    logger.info("🚀 Replicate SDK से GFPGAN (tencentarc/gfpgan) चला रहा हूँ...")
-    
-    # SDK स्वतः REPLICATE_API_TOKEN एनवायरनमेंट वेरिएबल का उपयोग करता है
-    os.environ["REPLICATE_API_TOKEN"] = REPLICATE_API_TOKEN
+    logger.info("🚀 Replicate SDK (GFPGAN v1.4 Explicit) से चेहरा रीस्टोर कर रहा हूँ...")
     
     try:
-        # tencentarc/gfpgan का विशिष्ट और स्थिर v1.4 वर्जन उपयोग करना
-        output = replicate.run(
-            "tencentarc/gfpgan:92836085e34d856012c05f1890d6d405ab8854b0c400b8296996b7cd3d02f2b1",
+        # SDK Client बनाएं (यह REPLICATE_API_TOKEN वातावरण चर का स्वतः उपयोग करेगा)
+        client = replicate.Client(api_token=REPLICATE_API_TOKEN)
+        
+        # 'owner/model:version_tag' फॉर्मेट का उपयोग जो अधिक सुरक्षित और स्थिर है
+        output = client.run(
+            "tencentarc/gfpgan:v1.4",
             input={
                 "img": image_url,
                 "scale": 2,
@@ -190,24 +192,33 @@ def restore_face_replicate_sdk(image_url, filename="generated_photo.jpg"):
         )
         
         if output:
-            img_url = output[0] if isinstance(output, list) else output
-            logger.info("📥 चेहरा रीस्टोर हो गया, इमेज डाउनलोड कर रहा हूँ...")
-            img_resp = session.get(img_url, timeout=60)
+            result_url = output[0] if isinstance(output, list) else output
+            logger.info(f"📥 रीस्टोर्ड इमेज डाउनलोड हो रही है: {result_url}")
+            img_resp = session.get(result_url, timeout=60)
+            
             if img_resp.status_code == 200:
                 with open(filename, 'wb') as f:
                     f.write(img_resp.content)
-                logger.info("🎉 सफलता! GFPGAN SDK द्वारा चेहरा सफलतापूर्वक रीस्टोर और डाउनलोड हो गया!")
+                logger.info("🎉 सफलता! GFPGAN v1.4 द्वारा चेहरा पूरी तरह पैना (Sharp) किया गया!")
                 return True
+            else:
+                logger.error(f"❌ आउटपुट इमेज डाउनलोड विफल: {img_resp.status_code}")
+        else:
+            logger.error("❌ Replicate से खाली आउटपुट मिला।")
+            
+    except replicate.exceptions.ReplicateError as e:
+        logger.error(f"❌ Replicate API Error: {e}")
     except Exception as e:
-        logger.error(f"❌ Replicate SDK Error: {e}")
+        logger.error(f"❌ GFPGAN SDK Exception: {e}")
+        
     return False
 
 # ============================================
-# 🎨 4. MULTI-ENGINE GENERATOR (HF, Hercai, Pollinations)
+# 🎨 4. MULTI-ENGINE GENERATOR (Hercai Removed)
 # ============================================
 def generate_ai_image_hf(prompt_text, model_id="playgroundai/playground-v2.5-1024px-aesthetic", filename="generated_photo.jpg"):
     if not HF_TOKEN:
-        logger.warning("⚠️ HF_TOKEN नहीं मिला! Hercai V3 बैकअप पर जा रहा हूँ...")
+        logger.warning("⚠️ HF_TOKEN नहीं मिला! पोलिनेशंस पर सीधे जा रहा हूँ...")
         return None
         
     logger.info(f"🚀 Hugging Face Mirror से {model_id} मॉडल द्वारा जनरेट कर रहा हूँ...")
@@ -238,56 +249,21 @@ def generate_ai_image_hf(prompt_text, model_id="playgroundai/playground-v2.5-102
             logger.info("✅ Hugging Face (Playground v2.5) से फोटो सफलतापूर्वक डाउनलोड हो गई!")
             return filename
         else:
-            # 🔍 विस्तृत एरर लॉगिंग
             logger.error(f"❌ HF Mirror विफल (Status: {response.status_code}): {response.text[:200]}")
     except Exception as e:
         logger.error(f"❌ HF Mirror Connection Error: {e}")
     return None
 
-def generate_ai_hercai(prompt_text, filename="generated_photo.jpg"):
-    logger.info("🚀 [लेयर 2] Hercai V3 (Stable Diffusion XL) से फोटो बना रहा हूँ...")
-    url = "https://hercai.onrender.com/v3/hercai"
-    
-    payload = {
-        "prompt": prompt_text + ", highly detailed, sharp focus, realistic face, 8k resolution, extreme details",
-        "model": "v3"  
-    }
-    
-    try:
-        response = session.post(url, json=payload, timeout=90)
-        if response.status_code == 200:
-            data = response.json()
-            img_url = data.get("reply")  
-            
-            if img_url:
-                logger.info("📥 फोटो जनरेट हो गई! डाउनलोड कर रहा हूँ...")
-                img_response = session.get(img_url, timeout=90)
-                if img_response.status_code == 200:
-                    with open(filename, 'wb') as f:
-                        f.write(img_response.content)
-                    logger.info("✅ Hercai V3 से हाई-क्वालिटी फोटो डाउनलोड हो गई!")
-                    return filename
-        else:
-            logger.error(f"❌ Hercai API विफल (Status: {response.status_code}): {response.text[:200]}")
-    except Exception as e:
-        logger.error(f"❌ Hercai V3 जनरेशन विफल: {e}")
-    return None
-
 def generate_ai_image(prompt_text, filename="generated_photo.jpg"):
-    logger.info("\n🎨 [इमेज जनरेटर] 3-लेयर प्रक्रिया शुरू हो रही है...")
+    logger.info("\n🎨 [इमेज जनरेटर] 2-लेयर प्रक्रिया शुरू (HF Mirror → Pollinations)...")
     
-    # LAYER 1: Playground v2.5
+    # LAYER 1: Playground v2.5 (HF Mirror)
     image_path = generate_ai_image_hf(prompt_text, "playgroundai/playground-v2.5-1024px-aesthetic", filename)
     if image_path:
         return image_path
         
-    # LAYER 2: Hercai V3
-    image_path = generate_ai_hercai(prompt_text, filename)
-    if image_path:
-        return image_path
-
-    # LAYER 3: Pollinations (Flux-Realism)
-    logger.info("🔄 [लेयर 3] पोलिनेशंस बैकअप सर्वर पर स्विच कर रहा हूँ...")
+    # LAYER 2: Pollinations (Flux-Realism) - Hercai को हटा दिया गया है
+    logger.info("🔄 [लेयर 2] पोलिनेशंस (Flux-Realism) बैकअप पर स्विच कर रहा हूँ...")
     clean_prompt = prompt_text.strip().replace('\n', ' ').replace('  ', ' ')
     encoded_prompt = urllib.parse.quote(clean_prompt[:250])
     
@@ -549,11 +525,11 @@ def main():
             logger.error("❌ फोटो नहीं बन पाई!")
             return False
             
-        # ✅ GFPGAN चेहरा रीस्टोरेशन (SDK आधारित)
+        # ✅ GFPGAN चेहरा रीस्टोरेशन (स्थिर Explicit Version)
         if REPLICATE_API_TOKEN:
             live_url = upload_image_for_replicate(image_path)
             if live_url:
-                success_restore = restore_face_replicate_sdk(live_url, image_path)
+                success_restore = restore_face_replicate(live_url, image_path)
                 if not success_restore:
                     logger.warning("⚠️ GFPGAN विफल रहा, मूल फोटो का उपयोग जारी रख रहा हूँ...")
         
@@ -571,7 +547,7 @@ def main():
                 if REPLICATE_API_TOKEN:
                     live_url = upload_image_for_replicate(image_path)
                     if live_url:
-                        restore_face_replicate_sdk(live_url, image_path)
+                        restore_face_replicate(live_url, image_path)
                 enhance_image_quality_safe(image_path)
                 
                 quality_ok = check_image_quality(image_path)
