@@ -32,7 +32,7 @@ if not FB_PAGE_ID or not FB_ACCESS_TOKEN:
     print("❌ Facebook Credentials नहीं मिले!")
     sys.exit(1)
 
-print(f"Target: @{TARGET_PROFILE}")
+print(f"Target Profile: @{TARGET_PROFILE}")
 print(f"Facebook Page: {FB_PAGE_ID[:3]}***")
 
 # ============================================
@@ -50,48 +50,118 @@ session.mount("https://", adapter)
 session.mount("http://", adapter)
 
 # ============================================
-# 🎨 MULTIPLE PROMPTS
+# 🧠 GEMINI AI से INSTAGRAM स्टाइल प्रॉम्प्ट बनाना
+# ============================================
+def generate_prompt_via_gemini(instagram_caption):
+    if not GEMINI_API:
+        return None
+    print("🧠 Gemini AI से Instagram कैप्शन के आधार पर रियल-स्टाइल प्रॉम्प्ट बना रहा हूँ...")
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={GEMINI_API}"
+    headers = {"Content-Type": "application/json"}
+    
+    prompt_to_gemini = (
+        f"Analyze this Instagram post description: '{instagram_caption}'. "
+        "Create a highly detailed image generation prompt for a photorealistic Indian woman in a waist-up pose. "
+        "Ensure the prompt focus on sharp symmetrical facial features, realistic natural skin texture, clear eyes, and elegant traditional/fusion attire matching the style of the caption. "
+        "Only output the prompt text in English. Do not add any introduction or conversational words."
+    )
+    
+    payload = {
+        "contents": [{"parts": [{"text": prompt_to_gemini}]}]
+    }
+    
+    try:
+        response = requests.post(url, headers=headers, json=payload, timeout=30)
+        if response.status_code == 200:
+            result = response.json()
+            generated_text = result['candidates'][0]['content']['parts'][0]['text']
+            print(f"✅ Gemini जनरेटेड प्रॉम्प्ट: {generated_text[:150]}...")
+            return generated_text.strip()
+    except Exception as e:
+        print(f"⚠️ Gemini API कॉल विफल: {e}")
+    return None
+
+# ============================================
+# 📸 PLAYWRIGHT INSTAGRAM SCRAPER
 # ============================================
 PROMPTS = [
-    """
-    A stunning high-quality waist-up portrait of an Indian bride standing gracefully, 
-    showing her traditional red bridal wear down to the waist.
-    Highly detailed realistic facial features, natural skin pores, realistic eyes, 
-    soft studio lighting, 8k resolution, highly focused, photorealistic.
-    """,
-    """
-    A glamorous waist-up fashion editorial shot of a Bollywood actress standing gracefully, 
-    showing her modern designer fusion wear down to her waist.
-    Extremely sharp focus, natural skin texture, realistic human eyes, professional studio lighting, 
-    symmetrical facial features, photorealistic, 8k.
-    """,
-    """
-    A beautiful waist-up portrait of a South Indian woman standing gracefully in a silk saree, 
-    traditional design visible down to the waist.
-    Sharp focus on face, natural warm skin tone, realistic detailed eyes, rich Kanjivaram saree details, 
-    natural sunlight background, dslr quality.
-    """,
-    """
-    A royal Rajasthani woman standing in a palace, waist-up portrait showing her traditional 
-    heavy-embroidered lehenga down to the waist.
-    Symmetrical highly detailed face, realistic eyes, natural skin structure, warm golden hour lighting, 
-    crystal clear focus.
-    """
+    "A stunning high-quality waist-up portrait of an Indian bride standing gracefully, showing her traditional red bridal wear down to the waist. Symmetrical facial features, realistic skin, dslr.",
+    "A glamorous waist-up fashion editorial shot of a Bollywood actress, showing her modern designer fusion wear. Natural skin structure, professional studio lighting, symmetrical face, photorealistic."
 ]
 
-def create_default_prompt():
+def learn_style_from_instagram():
+    print(f"🎯 Target Profile: @{TARGET_PROFILE}")
+    if not IG_USERNAME or not IG_PASSWORD:
+        print("⚠️ Instagram Credentials नहीं मिले! फ़ॉलबैक प्रॉम्ट्स का उपयोग कर रहा हूँ...")
+        return random.choice(PROMPTS)
+        
+    print("🚀 Playwright द्वारा Instagram पर लॉगिन और स्क्रैपिंग प्रारंभ...")
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True, args=["--disable-gpu", "--no-sandbox"])
+            context = browser.new_context(
+                viewport={"width": 390, "height": 844},
+                user_agent="Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1"
+            )
+            page = context.new_page()
+            
+            # लॉगिन प्रक्रिया
+            print("🔑 Instagram लॉगिन पेज खोल रहा हूँ...")
+            page.goto("https://www.instagram.com/accounts/login/", wait_until="networkidle", timeout=60000)
+            time.sleep(3)
+            
+            if page.locator("input[name='username']").is_visible():
+                page.fill("input[name='username']", IG_USERNAME)
+                page.fill("input[name='password']", IG_PASSWORD)
+                time.sleep(1)
+                page.click("button[type='submit']")
+                print("⏳ लॉगिन विवरण सबमिट किए गए...")
+                time.sleep(10)
+                
+            # प्रोफाइल पर जाना
+            target_url = f"https://www.instagram.com/{TARGET_PROFILE}/"
+            print(f"🎯 Target प्रोफाइल लोड हो रहा है: {target_url}")
+            page.goto(target_url, wait_until="networkidle", timeout=60000)
+            time.sleep(5)
+            
+            posts = page.locator("a[href*='/p/']").all()
+            if posts:
+                print("📸 नवीनतम पोस्ट मिल गई! डिटेल्स एक्सट्रैक्ट कर रहा हूँ...")
+                posts[0].click()
+                time.sleep(4)
+                
+                caption_text = ""
+                spans = page.locator("article span").all()
+                for span in spans[:5]:
+                    text = span.inner_text()
+                    if text and len(text) > 12:
+                        caption_text = text
+                        break
+                        
+                print(f"📝 कैप्शन मिला: {caption_text[:80]}...")
+                
+                if GEMINI_API and caption_text:
+                    generated_prompt = generate_prompt_via_gemini(caption_text)
+                    if generated_prompt:
+                        browser.close()
+                        return generated_prompt
+                
+                if caption_text:
+                    browser.close()
+                    return f"A realistic portrait of an Indian woman inspired by: {caption_text[:120]}. Waist-up, photorealistic, sharp focus on face, symmetrical eyes."
+            else:
+                print("⚠️ पोस्ट ढूंढने में असमर्थ (शायद प्राइवेट अकाउंट या लॉगिन वॉल है)।")
+            browser.close()
+    except Exception as e:
+        print(f"⚠️ Playwright स्क्रैपिंग त्रुटि: {e}")
+        
+    print("🔄 फ़ॉलबैक: रैंडम प्रॉम्प्ट का चयन किया जा रहा है...")
     return random.choice(PROMPTS)
 
-def learn_style_from_instagram():
-    print(f"📸 Instagram Login Skip - Using Manual Style Prompts")
-    selected_prompt = random.choice(PROMPTS)
-    return selected_prompt
-
 # ============================================
-# ☁️ इमेज को सुरक्षित लाइव URL पर अपलोड करना (Dual Backup)
+# ☁️ इमेज को सुरक्षित क्लाउड पर अपलोड करना
 # ============================================
 def upload_image_to_cloud(image_path):
-    # 1. Catbox.moe पर प्रयास करें (यह रीप्लिकेट के लिए सबसे स्थिर है)
     print("⏳ Catbox.moe पर सुरक्षित अपलोड प्रारंभ...")
     try:
         url = "https://catbox.moe/user/api.php"
@@ -106,7 +176,6 @@ def upload_image_to_cloud(image_path):
     except Exception as e:
         print(f"⚠️ Catbox अपलोड विफल: {e}")
 
-    # 2. Tmpfiles.org पर फॉलबैक प्रयास करें
     print("⏳ Tmpfiles.org पर फॉलबैक अपलोड प्रारंभ...")
     try:
         with open(image_path, 'rb') as f:
@@ -122,54 +191,46 @@ def upload_image_to_cloud(image_path):
     return None
 
 # ============================================
-# 🎭 REPLICATE FACE RESTORE (CodeFormer + GFPGAN)
+# 🎭 REPLICATE FACE RESTORE (GFPGAN Only to Prevent 429 Rate Limit)
 # ============================================
 def restore_face_replicate(image_url, filename="generated_photo.jpg"):
     if not REPLICATE_API_TOKEN:
         print("⚠️ REPLICATE_API_TOKEN नहीं मिला! रीस्टोरेशन बाईपास हो रहा है...")
         return False
         
-    print("🚀 CodeFormer (Replicate) से चेहरा और डिटेल्स साफ़ कर रहा हूँ...")
+    print("🚀 Replicate GFPGAN v1.4 से चेहरा रीस्टोर किया जा रहा है...")
     headers = {
         "Authorization": f"Token {REPLICATE_API_TOKEN}",
         "Content-Type": "application/json"
     }
     
-    # उत्कृष्ट परिणामों के लिए CodeFormer का उपयोग
+    # 429 एरर से बचने के लिए सीधा और विश्वसनीय GFPGAN v1.4 मॉडल रन करें
     payload = {
-        "version": "7de2ac0394e09d5434e357d203f4b840a4d2b21ca15d211418984dbaf5aa60f5",
+        "version": "92836085e34d856012c05f1890d6d405ab8854b0c400b8296996b7cd3d02f2b1",
         "input": {
-            "image": image_url,
-            "codeformer_fidelity": 0.65,
-            "background_enhance": True,
-            "face_upsample": True,
-            "upscale": 2
+            "img": image_url,
+            "version": "v1.4",
+            "scale": 2
         }
     }
     
     try:
         response = session.post("https://api.replicate.com/v1/predictions", headers=headers, json=payload, timeout=60)
         
-        # यदि CodeFormer फेल होता है तो GFPGAN v1.4 पर स्विच करें
+        # यदि 429 (रेट लिमिट) त्रुटि मिलती है, तो 12 सेकंड प्रतीक्षा करके पुनः प्रयास करें
+        if response.status_code == 429:
+            print("⏳ API रेट लिमिट आ गई है। 12 सेकंड प्रतीक्षा कर रहा हूँ...")
+            time.sleep(12)
+            response = session.post("https://api.replicate.com/v1/predictions", headers=headers, json=payload, timeout=60)
+
         if response.status_code != 201:
-            print(f"⚠️ CodeFormer त्रुटि (Code: {response.status_code}). GFPGAN v1.4 पर स्विच कर रहा हूँ...")
-            payload_gfpgan = {
-                "version": "92836085e34d856012c05f1890d6d405ab8854b0c400b8296996b7cd3d02f2b1",
-                "input": {
-                    "img": image_url,
-                    "version": "v1.4",
-                    "scale": 2
-                }
-            }
-            response = session.post("https://api.replicate.com/v1/predictions", headers=headers, json=payload_gfpgan, timeout=60)
-            if response.status_code != 201:
-                print(f"❌ Replicate API Error: Code {response.status_code} - {response.text[:200]}")
-                return False
+            print(f"❌ Replicate API Error: Code {response.status_code} - {response.text[:200]}")
+            return False
 
         prediction = response.json()
         poll_url = prediction["urls"]["get"]
         
-        print("⏳ चेहरे के पिक्सल और डिटेल्स को ठीक किया जा रहा है...")
+        print("⏳ चेहरे के पिक्सल को ठीक किया जा रहा है...")
         for _ in range(30):
             time.sleep(2)
             status_resp = session.get(poll_url, headers=headers, timeout=30)
@@ -184,10 +245,10 @@ def restore_face_replicate(image_url, filename="generated_photo.jpg"):
                     if img_resp.status_code == 200:
                         with open(filename, 'wb') as f:
                             f.write(img_resp.content)
-                        print("🎉 सफलता! चेहरा पूरी तरह से रिस्टोर और साफ हो गया!")
+                        print("🎉 सफलता! चेहरा रीस्टोर और साफ़ हो गया!")
                         return True
                 elif status in ["failed", "canceled"]:
-                    print(f"❌ Replicate प्रक्रिया विफल: {status} - {status_data.get('error', '')}")
+                    print(f"❌ Replicate प्रक्रिया विफल: {status}")
                     break
     except Exception as e:
         print(f"❌ फेस रीस्टोरेशन एरर: {e}")
@@ -198,43 +259,26 @@ def restore_face_replicate(image_url, filename="generated_photo.jpg"):
 # ============================================
 def generate_ai_image_hf(prompt_text, model_id="playgroundai/playground-v2.5-1024px-aesthetic", filename="generated_photo.jpg"):
     if not HF_TOKEN:
-        print("⚠️ HF_TOKEN नहीं मिला! Hercai V3 बैकअप पर जा रहा हूँ...")
         return None
-        
-    print(f"🚀 Hugging Face Mirror से {model_id} मॉडल द्वारा जनरेट कर रहा हूँ...")
+    print(f"🚀 Hugging Face से जनरेट कर रहा हूँ...")
     api_url = f"https://api-inference.hf-mirror.com/models/{model_id}"
     headers = {"Authorization": f"Bearer {HF_TOKEN}"}
-    
-    payload = {
-        "inputs": prompt_text,
-        "parameters": {
-            "width": 1024,
-            "height": 1024
-        }
-    }
-    
+    payload = {"inputs": prompt_text, "parameters": {"width": 1024, "height": 1024}}
     try:
         response = session.post(api_url, headers=headers, json=payload, timeout=120)
-        if response.status_code == 503:
-            estimated_time = response.json().get("estimated_time", 20)
-            print(f"⏳ मॉडल लोड हो रहा है, {estimated_time:.1f} सेकंड प्रतीक्षा कर रहा हूँ...")
-            time.sleep(min(estimated_time, 30))
-            response = session.post(api_url, headers=headers, json=payload, timeout=120)
-            
         if response.status_code == 200 and len(response.content) > 10000:
             with open(filename, 'wb') as f:
                 f.write(response.content)
-            print("✅ Hugging Face से फोटो सफलतापूर्वक डाउनलोड हो गई!")
             return filename
-    except Exception as e:
-        print(f"❌ HF Mirror Connection Error: {e}")
-        return None
+    except:
+        pass
+    return None
 
 def generate_ai_hercai(prompt_text, filename="generated_photo.jpg"):
-    print("🚀 Hercai V3 (SDXL) से लाइव फोटो बना रहा हूँ...")
+    print("🚀 Hercai V3 से जनरेट कर रहा हूँ...")
     url = "https://hercai.onrender.com/v3/hercai"
     payload = {
-        "prompt": prompt_text + ", highly detailed, sharp focus, realistic face, 8k resolution, photorealistic",
+        "prompt": prompt_text + ", photorealistic portrait, sharp focus face, symmetrical realistic eyes, 8k resolution",
         "model": "v3"  
     }
     try:
@@ -247,8 +291,8 @@ def generate_ai_hercai(prompt_text, filename="generated_photo.jpg"):
                     with open(filename, 'wb') as f:
                         f.write(img_response.content)
                     return filename
-    except Exception as e:
-        print(f"❌ Hercai V3 जनरेशन विफल: {e}")
+    except:
+        pass
     return None
 
 def generate_ai_image(prompt_text, filename="generated_photo.jpg"):
@@ -261,31 +305,26 @@ def generate_ai_image(prompt_text, filename="generated_photo.jpg"):
     if image_path:
         return image_path
 
-    print("🔄 [लेयर 3] पोलिनेशंस बैकअप सर्वर पर स्विच कर रहा हूँ...")
+    print("🔄 [लेयर 3] पोलिनेशंस बैकअप सर्वर...")
     clean_prompt = prompt_text.strip().replace('\n', ' ').replace('  ', ' ')
     encoded_prompt = urllib.parse.quote(clean_prompt[:250])
     flux_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=1280&model=flux-realism&nologo=true&quality=high"
-    
     try:
         response = session.get(flux_url, timeout=120)
         if response.status_code == 200 and len(response.content) > 50000:
             with open(filename, 'wb') as f:
                 f.write(response.content)
             return filename
-    except Exception as e:
-        print(f"❌ पोलिनेशंस बैकअप सर्वर विफल: {e}")
-        
+    except:
+        pass
     return create_placeholder_image(filename)
 
 def generate_ai_image_simple(filename="generated_photo.jpg"):
-    simple_prompts = [
-        "Beautiful Indian bride, waist-up portrait, traditional red dress, realistic skin, sharp focus",
-        "Stunning Indian woman in saree, waist-up portrait, detailed face, professional portrait"
-    ]
-    return generate_ai_image(random.choice(simple_prompts), filename)
+    simple_prompt = "Stunning Indian woman standing gracefully, waist-up portrait, detailed attire, realistic skin, sharp focus"
+    return generate_ai_image(simple_prompt, filename)
 
 def create_placeholder_image(filename="placeholder.jpg"):
-    backup_prompt = "Stunning Indian woman standing gracefully, waist-up portrait, realistic face, sharp focus"
+    backup_prompt = "Beautiful Indian woman, waist-up portrait, realistic face, sharp focus"
     encoded = urllib.parse.quote(backup_prompt)
     url = f"https://image.pollinations.ai/prompt/{encoded}?width=1024&height=1280&model=flux-realism&nologo=true&quality=high"
     try:
@@ -322,9 +361,8 @@ def enhance_image_quality(image_path):
         img = sharp_enhancer.enhance(1.15)
         
         img.save(image_path, quality=95, optimize=True, format='JPEG')
-        print(f"✅ एन्हांसमेंट सफलतापूर्वक पूरा हुआ! नई फाइल साइज: {os.path.getsize(image_path)/1024:.1f} KB")
+        print(f"✅ एन्हांसमेंट सफलतापूर्वक पूरा हुआ! फाइल साइज: {os.path.getsize(image_path)/1024:.1f} KB")
         return True
-        
     except Exception as e:
         print(f"⚠️ Enhancement Error: {e}")
         return False
@@ -355,7 +393,6 @@ def check_image_quality(image_path):
 def generate_caption():
     hour = datetime.now().hour
     time_text = "🌅 Good Morning!" if 6 <= hour < 12 else "☀️ Afternoon glow" if 12 <= hour < 17 else "🌆 Evening elegance" if 17 <= hour < 21 else "🌙 Night queen"
-    
     captions = [
         f"""{time_text}
 
@@ -414,14 +451,16 @@ def main():
     start_time = time.time()
     
     try:
+        # STEP 1: इंस्टाग्राम से रियल स्टाइल प्राप्त करना (Playwright + Gemini)
         style_prompt = learn_style_from_instagram()
         
+        # STEP 2: इमेज जनरेशन
         image_path = generate_ai_image(style_prompt, "instagram_style_photo.jpg")
         if not image_path:
             print("❌ फोटो नहीं बन पाई!")
             return False
             
-        # STEP 3: चेहरे के सुधार के लिए इमेज को अपलोड कर CodeFormer/GFPGAN चलाना
+        # STEP 3: रीप्लिकेट फ़ेस रिस्टोरेशन (Rate Limit सुधार के साथ)
         if REPLICATE_API_TOKEN:
             live_url = upload_image_to_cloud(image_path)
             if live_url:
@@ -429,10 +468,12 @@ def main():
                 if not success_restore:
                     print("⚠️ फेस रिस्टोरेशन विफल रहा, मूल फोटो का उपयोग किया जा रहा है...")
             else:
-                print("⚠️ इमेज क्लाउड पर अपलोड नहीं हो सकी, रिस्टोरेशन बाईपास किया गया।")
+                print("⚠️ इमेज क्लाउड पर अपलोड नहीं हो सकी।")
         
+        # STEP 4: इमेज एन्हांसमेंट
         enhance_image_quality(image_path)
         
+        # STEP 5: क्वालिटी जांच और री-ट्राई मैकेनिज्म
         quality_ok = check_image_quality(image_path)
         if not quality_ok:
             print("⚠️ Quality Check Fail हुई! दोबारा प्रयास कर रहा हूँ...")
@@ -441,12 +482,15 @@ def main():
                 if REPLICATE_API_TOKEN:
                     live_url = upload_image_to_cloud(image_path)
                     if live_url:
+                        # री-ट्राई के लिए API कॉल करने से पहले 10s प्रतीक्षा करें (Rate limiting सुरक्षा)
+                        time.sleep(10)
                         restore_face_replicate(live_url, image_path)
                 enhance_image_quality(image_path)
                 quality_ok = check_image_quality(image_path)
                 if not quality_ok:
                     image_path = create_placeholder_image("placeholder_final.jpg")
         
+        # STEP 6: फेसबुक पर अपलोड
         caption = generate_caption()
         post_id = post_to_facebook(image_path, caption)
         
