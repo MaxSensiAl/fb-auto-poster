@@ -28,7 +28,6 @@ GEMINI_API = os.environ.get("GEMINI_API")
 HF_TOKEN = os.environ.get("HF_TOKEN")
 REPLICATE_API_TOKEN = os.environ.get("REPLICATE_API_TOKEN") 
 
-# Check Credentials
 if not FB_PAGE_ID or not FB_ACCESS_TOKEN:
     print("❌ Facebook Credentials नहीं मिले!")
     sys.exit(1)
@@ -51,7 +50,7 @@ session.mount("https://", adapter)
 session.mount("http://", adapter)
 
 # ============================================
-# 🎨 MULTIPLE PROMPTS (प्राकृतिक चेहरे और यथार्थवादी बनावट के लिए)
+# 🎨 MULTIPLE PROMPTS
 # ============================================
 PROMPTS = [
     """
@@ -89,71 +88,109 @@ def learn_style_from_instagram():
     return selected_prompt
 
 # ============================================
-# ☁️ फोटो को लाइव यूआरएल पर अपलोड करना
+# ☁️ इमेज को सुरक्षित लाइव URL पर अपलोड करना (Dual Backup)
 # ============================================
-def upload_to_tmpfiles(image_path):
-    print("⏳ फोटो को सुरक्षित क्लाउड होस्ट पर अपलोड कर रहा हूँ...")
+def upload_image_to_cloud(image_path):
+    # 1. Catbox.moe पर प्रयास करें (यह रीप्लिकेट के लिए सबसे स्थिर है)
+    print("⏳ Catbox.moe पर सुरक्षित अपलोड प्रारंभ...")
+    try:
+        url = "https://catbox.moe/user/api.php"
+        files = {
+            'reqtype': (None, 'fileupload'),
+            'fileToUpload': open(image_path, 'rb')
+        }
+        response = requests.post(url, files=files, timeout=45)
+        if response.status_code == 200 and response.text.startswith("https://"):
+            print("✅ Catbox डायरेक्ट लिंक तैयार है!")
+            return response.text.strip()
+    except Exception as e:
+        print(f"⚠️ Catbox अपलोड विफल: {e}")
+
+    # 2. Tmpfiles.org पर फॉलबैक प्रयास करें
+    print("⏳ Tmpfiles.org पर फॉलबैक अपलोड प्रारंभ...")
     try:
         with open(image_path, 'rb') as f:
-            response = session.post("https://tmpfiles.org/api/v1/upload", files={"file": f}, timeout=60)
+            response = session.post("https://tmpfiles.org/api/v1/upload", files={"file": f}, timeout=45)
         if response.status_code == 200:
             data = response.json()
             file_url = data.get("data", {}).get("url")
             direct_url = file_url.replace("https://tmpfiles.org/", "https://tmpfiles.org/dl/")
-            print("✅ अस्थायी क्लाउड इमेज यूआरएल तैयार है!")
+            print("✅ Tmpfiles डायरेक्ट लिंक तैयार है!")
             return direct_url
     except Exception as e:
-        print(f"⚠️ क्लाउड अपलोड त्रुटि: {e}")
+        print(f"⚠️ Tmpfiles अपलोड विफल: {e}")
     return None
 
 # ============================================
-# 🎭 REPLICATE GFPGAN (चेहरे की स्पष्टता के लिए)
+# 🎭 REPLICATE FACE RESTORE (CodeFormer + GFPGAN)
 # ============================================
 def restore_face_replicate(image_url, filename="generated_photo.jpg"):
     if not REPLICATE_API_TOKEN:
-        print("⚠️ REPLICATE_API_TOKEN नहीं मिला! रीस्टोरेशन स्टेप बायपास कर रहा हूँ...")
+        print("⚠️ REPLICATE_API_TOKEN नहीं मिला! रीस्टोरेशन बाईपास हो रहा है...")
         return False
         
-    print("🚀 Replicate GFPGAN से चेहरा रीस्टोर कर रहा हूँ...")
+    print("🚀 CodeFormer (Replicate) से चेहरा और डिटेल्स साफ़ कर रहा हूँ...")
     headers = {
         "Authorization": f"Token {REPLICATE_API_TOKEN}",
         "Content-Type": "application/json"
     }
+    
+    # उत्कृष्ट परिणामों के लिए CodeFormer का उपयोग
     payload = {
-        "version": "92836085e34d856012c05f1890d6d405ab8854b0c400b8296996b7cd3d02f2b1", 
+        "version": "7de2ac0394e09d5434e357d203f4b840a4d2b21ca15d211418984dbaf5aa60f5",
         "input": {
-            "img": image_url,
-            "version": "v1.4",
-            "scale": 2  # GFPGAN खुद इमेज को 2x बड़ा करेगा
+            "image": image_url,
+            "codeformer_fidelity": 0.65,
+            "background_enhance": True,
+            "face_upsample": True,
+            "upscale": 2
         }
     }
     
     try:
         response = session.post("https://api.replicate.com/v1/predictions", headers=headers, json=payload, timeout=60)
-        if response.status_code == 201:
-            prediction = response.json()
-            poll_url = prediction["urls"]["get"]
-            
-            print("⏳ चेहरे के विश्लेषण की प्रक्रिया चालू है...")
-            for _ in range(30):
-                time.sleep(2)
-                status_resp = session.get(poll_url, headers=headers, timeout=30)
-                if status_resp.status_code == 200:
-                    status_data = status_resp.json()
-                    status = status_data.get("status")
-                    if status == "succeeded":
-                        output_url = status_data.get("output")
-                        img_resp = session.get(output_url, timeout=60)
-                        if img_resp.status_code == 200:
-                            with open(filename, 'wb') as f:
-                                f.write(img_resp.content)
-                            print("🎉 सफलता! चेहरा साफ और अपस्केल हो गया है!")
-                            return True
-                    elif status in ["failed", "canceled"]:
-                        print(f"❌ Replicate प्रक्रिया विफल: {status}")
-                        break
+        
+        # यदि CodeFormer फेल होता है तो GFPGAN v1.4 पर स्विच करें
+        if response.status_code != 201:
+            print(f"⚠️ CodeFormer त्रुटि (Code: {response.status_code}). GFPGAN v1.4 पर स्विच कर रहा हूँ...")
+            payload_gfpgan = {
+                "version": "92836085e34d856012c05f1890d6d405ab8854b0c400b8296996b7cd3d02f2b1",
+                "input": {
+                    "img": image_url,
+                    "version": "v1.4",
+                    "scale": 2
+                }
+            }
+            response = session.post("https://api.replicate.com/v1/predictions", headers=headers, json=payload_gfpgan, timeout=60)
+            if response.status_code != 201:
+                print(f"❌ Replicate API Error: Code {response.status_code} - {response.text[:200]}")
+                return False
+
+        prediction = response.json()
+        poll_url = prediction["urls"]["get"]
+        
+        print("⏳ चेहरे के पिक्सल और डिटेल्स को ठीक किया जा रहा है...")
+        for _ in range(30):
+            time.sleep(2)
+            status_resp = session.get(poll_url, headers=headers, timeout=30)
+            if status_resp.status_code == 200:
+                status_data = status_resp.json()
+                status = status_data.get("status")
+                if status == "succeeded":
+                    output_url = status_data.get("output")
+                    if isinstance(output_url, list):
+                        output_url = output_url[0]
+                    img_resp = session.get(output_url, timeout=60)
+                    if img_resp.status_code == 200:
+                        with open(filename, 'wb') as f:
+                            f.write(img_resp.content)
+                        print("🎉 सफलता! चेहरा पूरी तरह से रिस्टोर और साफ हो गया!")
+                        return True
+                elif status in ["failed", "canceled"]:
+                    print(f"❌ Replicate प्रक्रिया विफल: {status} - {status_data.get('error', '')}")
+                    break
     except Exception as e:
-        print(f"❌ GFPGAN रीस्टोरेशन एरर: {e}")
+        print(f"❌ फेस रीस्टोरेशन एरर: {e}")
     return False
 
 # ============================================
@@ -262,37 +299,28 @@ def create_placeholder_image(filename="placeholder.jpg"):
     return filename
 
 # ============================================
-# 🖼️ IMAGE ENHANCE (सुधारा गया संस्करण)
+# 🖼️ IMAGE ENHANCE
 # ============================================
 def enhance_image_quality(image_path):
-    """
-    बिना स्ट्रेचिंग (बिना खींचे) इमेज को क्रॉप करके 1536x1920 में अपस्केल 
-    और प्राकृतिक शार्पनेस प्रदान करने की प्रक्रिया।
-    """
     try:
         from PIL import Image, ImageEnhance, ImageFilter, ImageOps
         
         img = Image.open(image_path)
         print(f"📐 Original Resolution: {img.size[0]}x{img.size[1]}")
         
-        # 1. 🌟 ImageOps.fit का उपयोग (खिंचाव को रोकने के लिए क्रॉप और रीसाइज़)
         target_width = 1536
         target_height = 1920
         print(f"📐 Fitting image to: {target_width}x{target_height} (बिना विकृति के)")
         img = ImageOps.fit(img, (target_width, target_height), Image.Resampling.LANCZOS)
         
-        # 2. 🌀 प्राकृतिक अनशार्प मास्क फ़िल्टर
-        # धुंधलापन हटाने के लिए रेडियस को कम किया गया है ताकि चेहरे पर अतिरिक्त सफेद घेरे (halos) न बनें।
         img = img.filter(ImageFilter.UnsharpMask(radius=1.0, percent=100, threshold=3))
         
-        # 3. 🌀 संतुलित ब्राइटनेस और कंट्रास्ट सुधार (सिर्फ 1 पास)
         contrast_enhancer = ImageEnhance.Contrast(img)
         img = contrast_enhancer.enhance(1.05)
         
         sharp_enhancer = ImageEnhance.Sharpness(img)
         img = sharp_enhancer.enhance(1.15)
         
-        # 4. उच्च गुणवत्ता में सुरक्षित करें
         img.save(image_path, quality=95, optimize=True, format='JPEG')
         print(f"✅ एन्हांसमेंट सफलतापूर्वक पूरा हुआ! नई फाइल साइज: {os.path.getsize(image_path)/1024:.1f} KB")
         return True
@@ -386,34 +414,32 @@ def main():
     start_time = time.time()
     
     try:
-        # STEP 1: स्टाइल का चयन
         style_prompt = learn_style_from_instagram()
         
-        # STEP 2: AI इमेज जनरेशन
         image_path = generate_ai_image(style_prompt, "instagram_style_photo.jpg")
         if not image_path:
             print("❌ फोटो नहीं बन पाई!")
             return False
             
-        # STEP 3: GFPGAN फेस रीस्टोरेशन (वैकल्पिक)
+        # STEP 3: चेहरे के सुधार के लिए इमेज को अपलोड कर CodeFormer/GFPGAN चलाना
         if REPLICATE_API_TOKEN:
-            live_url = upload_to_tmpfiles(image_path)
+            live_url = upload_image_to_cloud(image_path)
             if live_url:
                 success_restore = restore_face_replicate(live_url, image_path)
                 if not success_restore:
-                    print("⚠️ GFPGAN विफल रहा, मूल फोटो का उपयोग कर रहा हूँ...")
+                    print("⚠️ फेस रिस्टोरेशन विफल रहा, मूल फोटो का उपयोग किया जा रहा है...")
+            else:
+                print("⚠️ इमेज क्लाउड पर अपलोड नहीं हो सकी, रिस्टोरेशन बाईपास किया गया।")
         
-        # STEP 4: बिना विकृति के क्वालिटी संवर्धन (No-Stretch Enhance)
         enhance_image_quality(image_path)
         
-        # STEP 5: क्वालिटी जांच
         quality_ok = check_image_quality(image_path)
         if not quality_ok:
             print("⚠️ Quality Check Fail हुई! दोबारा प्रयास कर रहा हूँ...")
             image_path = generate_ai_image_simple("retry_photo.jpg")
             if image_path:
                 if REPLICATE_API_TOKEN:
-                    live_url = upload_to_tmpfiles(image_path)
+                    live_url = upload_image_to_cloud(image_path)
                     if live_url:
                         restore_face_replicate(live_url, image_path)
                 enhance_image_quality(image_path)
@@ -421,11 +447,9 @@ def main():
                 if not quality_ok:
                     image_path = create_placeholder_image("placeholder_final.jpg")
         
-        # STEP 6: कैप्शन और फेसबुक पोस्ट
         caption = generate_caption()
         post_id = post_to_facebook(image_path, caption)
         
-        # STEP 7: क्लीनअप
         cleanup_files(image_path, "retry_photo.jpg", "placeholder_final.jpg")
         
         elapsed = time.time() - start_time
