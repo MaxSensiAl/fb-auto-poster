@@ -9,9 +9,10 @@ from datetime import datetime
 from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
 from PIL import Image, ImageEnhance, ImageFilter, ImageOps
+import replicate  # ✅ Replicate SDK आयात किया गया
 
 # ============================================
-# 📝 लॉगिंग सेटअप (Structured Logging)
+# 📝 लॉगिंग सेटअप
 # ============================================
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -23,7 +24,7 @@ import urllib3.util.connection as urllib3_connection
 urllib3_connection.HAS_IPV6 = False
 
 # ============================================
-# 🔐 GITHUB SECRETS से VARIABLES लें और Early Check करें
+# 🔐 GITHUB SECRETS से VARIABLES लें
 # ============================================
 IG_USERNAME = os.environ.get("IG_USERNAME")
 IG_PASSWORD = os.environ.get("IG_PASSWORD")
@@ -119,9 +120,6 @@ PROMPTS = [
 def create_default_prompt():
     return random.choice(PROMPTS)
 
-# ============================================
-# 📸 1. INSTAGRAM STYLE STYLE SELECTOR
-# ============================================
 def learn_style_from_instagram():
     logger.info("📸 Instagram Login Skip - Using Manual Style Prompts")
     logger.info(f"🎯 Target Profile: @{TARGET_PROFILE}")
@@ -130,10 +128,9 @@ def learn_style_from_instagram():
     return selected_prompt
 
 # ============================================
-# ☁️ 2. JUGAD: इमेज अपलोडर (tmpfiles.org + catbox.moe फॉलबैक)
+# ☁️ 2. इमेज अपलोडर (tmpfiles.org + catbox.moe फॉलबैक)
 # ============================================
 def upload_image_for_replicate(image_path):
-    """Replicate के लिए इमेज यूआरएल तैयार करना (tmpfiles.org विफल होने पर catbox.moe का उपयोग)"""
     logger.info("⏳ फोटो को सुरक्षित क्लाउड होस्ट पर अपलोड कर रहा हूँ...")
     
     # 1. पहला प्रयास: tmpfiles.org
@@ -168,73 +165,42 @@ def upload_image_for_replicate(image_path):
     return None
 
 # ============================================
-# 🎭 3. REPLICATE GFPGAN (TencentARC) - चेहरा रीस्टोरेशन
+# 🎭 3. REPLICATE GFPGAN (SDK आधारित सुरक्षित संस्करण)
 # ============================================
-def restore_face_replicate_robust(image_url, filename="generated_photo.jpg"):
-    """Replicate GFPGAN v1.4 का उपयोग करके चेहरे को साफ और पैना (Sharpen) बनाना (Exponential Backoff के साथ)"""
+def restore_face_replicate_sdk(image_url, filename="generated_photo.jpg"):
+    """Replicate SDK का उपयोग करके GFPGAN चलाना ताकि हैश एरर न आए"""
     if not REPLICATE_API_TOKEN:
-        logger.warning("⚠️ REPLICATE_API_TOKEN नहीं मिला! रीस्टोरेशन स्टेप बायपास कर रहा हूँ...")
+        logger.warning("⚠️ REPLICATE_API_TOKEN नहीं मिला! रीस्टोरेशन स्किप।")
         return False
         
-    logger.info("🚀 Replicate GFPGAN से चेहरा रीस्टोर और पैना कर रहा हूँ...")
-    headers = {
-        "Authorization": f"Token {REPLICATE_API_TOKEN}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "version": "92836085e34d856012c05f1890d6d405ab8854b0c400b8296996b7cd3d02f2b1", # GFPGAN v1.4
-        "input": {
-            "img": image_url,
-            "version": "v1.4",
-            "scale": 2
-        }
-    }
+    logger.info("🚀 Replicate SDK से GFPGAN (tencentarc/gfpgan) चला रहा हूँ...")
+    
+    # SDK स्वतः REPLICATE_API_TOKEN एनवायरनमेंट वेरिएबल का उपयोग करता है
+    os.environ["REPLICATE_API_TOKEN"] = REPLICATE_API_TOKEN
     
     try:
-        response = session.post("https://api.replicate.com/v1/predictions", headers=headers, json=payload, timeout=60)
-        if response.status_code != 201:
-            logger.error(f"❌ Replicate API प्रारंभ एरर: {response.text}")
-            return False
-            
-        prediction = response.json()
-        poll_url = prediction["urls"]["get"]
-        logger.info("⏳ चेहरे के विश्लेषण की प्रक्रिया चालू है (अधिकतम 3 मिनट)...")
+        # tencentarc/gfpgan का विशिष्ट और स्थिर v1.4 वर्जन उपयोग करना
+        output = replicate.run(
+            "tencentarc/gfpgan:92836085e34d856012c05f1890d6d405ab8854b0c400b8296996b7cd3d02f2b1",
+            input={
+                "img": image_url,
+                "scale": 2,
+                "version": "v1.4"
+            }
+        )
         
-        # Exponential Backoff के साथ पोलिंग
-        wait_time = 3
-        elapsed = 0
-        max_wait = 180
-        
-        while elapsed < max_wait:
-            time.sleep(wait_time)
-            elapsed += wait_time
-            wait_time = min(wait_time * 1.5, 10)  # अंतराल को धीरे-धीरे 10 सेकंड तक बढ़ाएं
-            
-            status_resp = session.get(poll_url, headers=headers, timeout=30)
-            if status_resp.status_code != 200:
-                continue
-                
-            status_data = status_resp.json()
-            status = status_data.get("status")
-            
-            if status == "succeeded":
-                output_url = status_data.get("output")
-                if output_url:
-                    img_resp = session.get(output_url, timeout=60)
-                    if img_resp.status_code == 200:
-                        with open(filename, 'wb') as f:
-                            f.write(img_resp.content)
-                        logger.info("🎉 सफलता! GFPGAN द्वारा चेहरा डाउनलोड हो गया!")
-                        return True
-            elif status in ["failed", "canceled"]:
-                logger.error(f"❌ Replicate प्रक्रिया विफल: {status_data.get('error', 'Unknown Error')}")
-                return False
-                
-        logger.error("❌ GFPGAN प्रक्रिया समय-सीमा (Timeout) से बाहर निकल गई।")
-        return False
+        if output:
+            img_url = output[0] if isinstance(output, list) else output
+            logger.info("📥 चेहरा रीस्टोर हो गया, इमेज डाउनलोड कर रहा हूँ...")
+            img_resp = session.get(img_url, timeout=60)
+            if img_resp.status_code == 200:
+                with open(filename, 'wb') as f:
+                    f.write(img_resp.content)
+                logger.info("🎉 सफलता! GFPGAN SDK द्वारा चेहरा सफलतापूर्वक रीस्टोर और डाउनलोड हो गया!")
+                return True
     except Exception as e:
-        logger.error(f"❌ GFPGAN रीस्टोरेशन एरर: {e}")
-        return False
+        logger.error(f"❌ Replicate SDK Error: {e}")
+    return False
 
 # ============================================
 # 🎨 4. MULTI-ENGINE GENERATOR (HF, Hercai, Pollinations)
@@ -248,7 +214,6 @@ def generate_ai_image_hf(prompt_text, model_id="playgroundai/playground-v2.5-102
     api_url = f"https://api-inference.hf-mirror.com/models/{model_id}"
     headers = {"Authorization": f"Bearer {HF_TOKEN}"}
     
-    # Negative prompt का समावेश ताकि परिणाम बेहतर मिलें
     payload = {
         "inputs": prompt_text,
         "parameters": {
@@ -272,6 +237,9 @@ def generate_ai_image_hf(prompt_text, model_id="playgroundai/playground-v2.5-102
                 f.write(response.content)
             logger.info("✅ Hugging Face (Playground v2.5) से फोटो सफलतापूर्वक डाउनलोड हो गई!")
             return filename
+        else:
+            # 🔍 विस्तृत एरर लॉगिंग
+            logger.error(f"❌ HF Mirror विफल (Status: {response.status_code}): {response.text[:200]}")
     except Exception as e:
         logger.error(f"❌ HF Mirror Connection Error: {e}")
     return None
@@ -299,6 +267,8 @@ def generate_ai_hercai(prompt_text, filename="generated_photo.jpg"):
                         f.write(img_response.content)
                     logger.info("✅ Hercai V3 से हाई-क्वालिटी फोटो डाउनलोड हो गई!")
                     return filename
+        else:
+            logger.error(f"❌ Hercai API विफल (Status: {response.status_code}): {response.text[:200]}")
     except Exception as e:
         logger.error(f"❌ Hercai V3 जनरेशन विफल: {e}")
     return None
@@ -382,18 +352,13 @@ def create_placeholder_image(filename="placeholder.jpg"):
 # 🖼️ IMAGE ENHANCE (Aspect Ratio Crop + HD 3-Pass)
 # ============================================
 def enhance_image_quality_safe(image_path, target_ratio=(4, 5), target_short_side=1536):
-    """
-    बिना स्ट्रेच किए (Center Crop की सहायता से) इमेज का आकार बढ़ाना और प्रोग्रेसिव शार्पनिंग लागू करना
-    """
     try:
         img = Image.open(image_path).convert("RGB")
         orig_w, orig_h = img.size
         
-        # 1. रिज़ॉल्यूशन गणना (4:5 अनुपात के अनुसार, शॉर्ट साइड 1536px)
         target_w = target_short_side
         target_h = int(target_short_side * target_ratio[1] / target_ratio[0])  # 1920
         
-        # विकृति रोकने के लिए अनुपात के अनुसार रीसाइज़
         if orig_w < orig_h:
             scale = target_w / orig_w
         else:
@@ -402,29 +367,22 @@ def enhance_image_quality_safe(image_path, target_ratio=(4, 5), target_short_sid
         new_w, new_h = int(orig_w * scale), int(orig_h * scale)
         img = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
         
-        # सेंटर क्रॉपिंग
         left = (new_w - target_w) // 2
         top = (new_h - target_h) // 2
         img = img.crop((left, top, left + target_w, top + target_h))
         
         logger.info(f"📐 रीसाइज़ और क्रॉप पूर्ण: {orig_w}x{orig_h} -> {target_w}x{target_h}")
         
-        # 2. 🌀 प्रोग्रेसिव Unsharp Mask (फोटोग्राफी स्टैंडर्ड)
-        # पास 1: ग्लोबल डिटेल्स के लिए
         img = img.filter(ImageFilter.UnsharpMask(radius=1.2, percent=110, threshold=3))
-        # पास 2: माइक्रो-कंट्रास्ट के लिए
         img = img.filter(ImageFilter.UnsharpMask(radius=0.5, percent=50, threshold=1))
         
-        # 3. माइल्ड ग्लोबल एन्हांसमेंट
         img = ImageEnhance.Sharpness(img).enhance(1.05)
         img = ImageEnhance.Contrast(img).enhance(1.03)
-        img = ImageEnhance.Color(img).enhance(1.02)  # त्वचा के रंगों को उभारने के लिए
+        img = ImageEnhance.Color(img).enhance(1.02)
         
-        # 4. हाई क्वालिटी सेव (JPEG)
         img.save(image_path, "JPEG", quality=95, optimize=True, subsampling=0)
         logger.info(f"✅ सुरक्षित 2K HD एन्हांसमेंट पूर्ण! नई फ़ाइल साइज: {os.path.getsize(image_path)/1024:.1f} KB")
         return True
-        
     except Exception as e:
         logger.error(f"⚠️ एन्हांसमेंट त्रुटि: {e}", exc_info=True)
         return False
@@ -528,7 +486,6 @@ def generate_caption():
 # ============================================
 def post_to_facebook(image_path, caption):
     logger.info("📤 Facebook पर पोस्ट कर रहा हूँ...")
-    # Version Pinning (v19.0) ताकि भविष्य में API बदलाव से कोड अप्रभावित रहे
     fb_url = f"https://graph.facebook.com/v19.0/{FB_PAGE_ID}/photos"
     
     payload = {
@@ -553,7 +510,6 @@ def post_to_facebook(image_path, caption):
         else:
             logger.error(f"❌ Facebook API त्रुटि: {response.text[:500]}")
             return None
-            
     except Exception as e:
         logger.error(f"⚠️ Facebook पोस्टिंग के दौरान अपवाद (Exception): {e}")
         return None
@@ -593,15 +549,15 @@ def main():
             logger.error("❌ फोटो नहीं बन पाई!")
             return False
             
-        # ✅ GFPGAN चेहरा रीस्टोरेशन
+        # ✅ GFPGAN चेहरा रीस्टोरेशन (SDK आधारित)
         if REPLICATE_API_TOKEN:
             live_url = upload_image_for_replicate(image_path)
             if live_url:
-                success_restore = restore_face_replicate_robust(live_url, image_path)
+                success_restore = restore_face_replicate_sdk(live_url, image_path)
                 if not success_restore:
                     logger.warning("⚠️ GFPGAN विफल रहा, मूल फोटो का उपयोग जारी रख रहा हूँ...")
         
-        # ✅ STEP 2.5: Image Quality Enhance & Polish (Aspect Ratio सुरक्षित रखते हुए)
+        # ✅ STEP 2.5: Image Quality Enhance & Polish
         enhance_image_quality_safe(image_path)
         
         # STEP 2.8: Photo Quality Check
@@ -615,7 +571,7 @@ def main():
                 if REPLICATE_API_TOKEN:
                     live_url = upload_image_for_replicate(image_path)
                     if live_url:
-                        restore_face_replicate_robust(live_url, image_path)
+                        restore_face_replicate_sdk(live_url, image_path)
                 enhance_image_quality_safe(image_path)
                 
                 quality_ok = check_image_quality(image_path)
