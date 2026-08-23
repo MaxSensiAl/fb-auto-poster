@@ -1,1 +1,5 @@
-pip install instagrapi requests
+requests
+urllib3
+pillow
+replicate
+instagrapi
