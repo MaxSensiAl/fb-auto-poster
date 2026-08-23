@@ -2,3 +2,4 @@ requests
 urllib3
 pillow
 google-genai
+replicate
