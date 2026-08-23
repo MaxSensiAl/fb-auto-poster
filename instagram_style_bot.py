@@ -38,7 +38,7 @@ session.mount("https://", adapter)
 session.mount("http://", adapter)
 
 # ============================================
-# 🎨 ZARASO_PHIA STYLE PROMPTS (ऑप्टिमाइज्ड)
+# 🎨 ZARASO_PHIA STYLE PROMPTS
 # ============================================
 PROMPTS = [
     "Ultra HD full body portrait of a stunning Indian woman, natural beauty, glowing skin, wearing casual stylish outfit, city background, natural sunlight, candid pose, professional photography, hyper realistic, sharp focus on face, 8k resolution",
@@ -65,7 +65,7 @@ def upload_to_temporary_cloud(image_path):
     return None
 
 # ============================================
-# 🎭 चेहरे को साफ करना (GFPGAN Face Restore)
+# 🎭 चेहरे को साफ करना (GFPGAN Face Restore - FIXED VERSION)
 # ============================================
 def restore_face_gfpgan(image_path):
     if not REPLICATE_API_TOKEN:
@@ -80,11 +80,13 @@ def restore_face_gfpgan(image_path):
     print("🚀 GFPGAN v1.4 द्वारा चेहरे को बिल्कुल साफ और शार्प (Sharp) कर रहा हूँ...")
     try:
         client = replicate.Client(api_token=REPLICATE_API_TOKEN)
+        
+        # ✅ 'tencentarc/gfpgan' का सटीक और स्थिर वर्जन हैश
         output = client.run(
-            "tencentarc/gfpgan:v1.4",
+            "tencentarc/gfpgan:9a42a3511d0de2e9b4ab1c0af640f302b5064857453dbe6f62e219ef9243728f",
             input={
                 "img": cloud_url,
-                "scale": 1.5,
+                "scale": 2,
                 "version": "v1.4"
             }
         )
@@ -102,7 +104,7 @@ def restore_face_gfpgan(image_path):
     return False
 
 # ============================================
-# 🎨 IMAGE GENERATION (1024x1280 standard)
+# 🎨 IMAGE GENERATION
 # ============================================
 def generate_ultra_hd_image(filename="ultra_hd_photo.jpg", max_retries=5):
     print("🎨 AI फोटो जनरेट कर रहा हूँ...")
@@ -115,7 +117,7 @@ def generate_ultra_hd_image(filename="ultra_hd_photo.jpg", max_retries=5):
             clean_prompt = enhanced_prompt.strip().replace('\n', ' ').replace('  ', ' ')
             encoded_prompt = urllib.parse.quote(clean_prompt[:350])
             
-            # साइज को 1024x1280 रखा गया है ताकि सर्वर कंप्रेस न करे
+            # साइज 1024x1280 (4:5 Ratio)
             url = (
                 f"https://image.pollinations.ai/prompt/{encoded_prompt}"
                 f"?width=1024&height=1280"
@@ -194,7 +196,7 @@ def generate_caption(image_prompt):
             attempts += 1
             
     except Exception as e:
-        print(f"⚠️ कैप्शन एजेंट एरर: {e}")
+        print(f"⚠️ कैप्शन एआई एजेंट एरर: {e}")
     return "✨ Unfiltered and unmatched beauty. #OOTD #Fashion"
 
 # ============================================
@@ -229,7 +231,7 @@ def post_to_facebook(image_path, caption):
 # ============================================
 def main():
     print("\n" + "="*60)
-    print("🚀 ZARASO_PHIA STYLE BOT WITH GFPGAN FACE RESTORE")
+    print("🚀 ZARASO_PHIA STYLE BOT WITH FIXED GFPGAN FACE RESTORE")
     print("="*60)
     
     start_time = time.time()
@@ -239,7 +241,7 @@ def main():
         print("❌ इमेज जनरेट नहीं हो सकी!")
         return False
         
-    # 🎭 चेहरे को साफ़ करने का जादुई कदम
+    # 🎭 चेहरे को साफ़ करने का सुधारा गया कदम
     restore_face_gfpgan(image_path)
     
     # 🖼️ अंतिम टच (शार्पनेस और कॉन्ट्रास्ट)
