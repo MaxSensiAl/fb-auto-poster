@@ -13,7 +13,6 @@ from urllib3.util import Retry
 # ============================================
 FB_PAGE_ID = os.environ.get("FB_PAGE_ID")
 FB_ACCESS_TOKEN = os.environ.get("FB_ACCESS_TOKEN")
-HF_TOKEN = os.environ.get("HF_TOKEN")
 
 if not FB_PAGE_ID or not FB_ACCESS_TOKEN:
     print("❌ Facebook Credentials नहीं मिले!")
@@ -22,7 +21,7 @@ if not FB_PAGE_ID or not FB_ACCESS_TOKEN:
 print(f"✅ Facebook Page ID: {FB_PAGE_ID[:5]}***")
 
 # ============================================
-# 🌐 मजबूत नेटवर्क सेशन
+# 🌐 Session Setup
 # ============================================
 session = requests.Session()
 retry_strategy = Retry(
@@ -36,138 +35,36 @@ session.mount("https://", adapter)
 session.mount("http://", adapter)
 
 # ============================================
-# 🎨 ZARASO_PHIA STYLE PROMPTS - Exact Same Quality
+# 🎨 ZARASO_PHIA STYLE PROMPTS
 # ============================================
 
 PROMPTS = [
-    # 1. Style - Unfiltered & Unmatched
-    """
-    Ultra HD 4K full body shot of a stunning Indian woman, unfiltered and unmatched look,
-    standing confidently with natural beauty, no makeup look, glowing skin,
-    wearing casual stylish outfit, denim jeans and white top,
-    city background, natural sunlight, candid pose,
-    professional photography, hyper realistic, sharp focus on face and body,
-    National Geographic quality, 8k resolution, cinematic lighting.
-    """,
-    
-    # 2. Style - OOTD (Outfit of the Day)
-    """
-    Ultra HD 4K full body shot of a fashionable Indian woman, OOTD style,
-    wearing trendy fusion outfit, stylish accessories,
-    urban background, street style photography,
-    confident pose, natural lighting, sharp focus on outfit and face,
-    professional photography, hyper realistic, 8k resolution,
-    Vogue magazine quality, editorial style.
-    """,
-    
-    # 3. Style - Desi Vibes
-    """
-    Ultra HD 4K full body shot of an Indian woman in traditional desi wear,
-    beautiful ethnic outfit, traditional jewelry,
-    cultural background, warm golden lighting,
-    graceful pose, natural beauty, sharp focus on face and outfit,
-    professional photography, hyper realistic, 8k resolution,
-    National Geographic quality, cinematic.
-    """,
-    
-    # 4. Style - Casual Look
-    """
-    Ultra HD 4K full body shot of a beautiful Indian woman in casual look,
-    simple yet stylish outfit, natural makeup, glowing skin,
-    outdoor background, natural sunlight, candid smile,
-    relaxed pose, professional photography, hyper realistic,
-    sharp focus on face and body, 8k resolution, Vogue quality.
-    """,
-    
-    # 5. Style - Modern Indian Woman
-    """
-    Ultra HD 4K full body shot of a modern Indian woman,
-    contemporary fusion wear, elegant style,
-    urban background, natural lighting,
-    confident pose, sharp focus on face and outfit,
-    professional photography, hyper realistic, 8k resolution,
-    editorial style, Vogue magazine quality.
-    """,
-    
-    # 6. Style - Unfiltered Beauty
-    """
-    Ultra HD 4K full body shot of an Indian woman, unfiltered beauty,
-    natural look, no makeup, glowing skin, simple outfit,
-    outdoor natural background, sunlight, candid pose,
-    professional photography, hyper realistic, sharp focus on face,
-    8k resolution, National Geographic quality, cinematic lighting.
-    """,
-    
-    # 7. Style - Street Fashion
-    """
-    Ultra HD 4K full body shot of a stylish Indian woman,
-    street fashion style, trendy outfit, cool accessories,
-    city street background, natural lighting, confident pose,
-    professional photography, hyper realistic, sharp focus on face and outfit,
-    8k resolution, Vogue magazine quality, editorial style.
-    """,
-    
-    # 8. Style - Desi Girl
-    """
-    Ultra HD 4K full body shot of a desi Indian girl,
-    traditional ethnic wear, beautiful jewelry, natural beauty,
-    cultural background, warm lighting, graceful pose,
-    professional photography, hyper realistic, sharp focus on face and outfit,
-    8k resolution, National Geographic quality.
-    """,
-    
-    # 9. Style - Beach Vibes (Like zaraso_phia)
-    """
-    Ultra HD 4K full body shot of a beautiful Indian woman on beach,
-    stylish summer dress, natural beauty, glowing skin,
-    white sand, blue ocean, golden hour lighting,
-    candid pose, professional photography, hyper realistic,
-    sharp focus on face and body, 8k resolution, cinematic.
-    """,
-    
-    # 10. Style - City Girl
-    """
-    Ultra HD 4K full body shot of a modern city girl Indian woman,
-    stylish outfit, urban background, natural lighting,
-    confident pose, sharp focus on face and outfit,
-    professional photography, hyper realistic, 8k resolution,
-    Vogue magazine quality, editorial style.
-    """,
-    
-    # 11. Style - Indian Beauty
-    """
-    Ultra HD 4K full body shot of a stunning Indian beauty,
-    traditional or fusion wear, natural makeup, glowing skin,
-    beautiful background, warm lighting, graceful pose,
-    professional photography, hyper realistic, sharp focus on face,
-    8k resolution, National Geographic quality.
-    """,
-    
-    # 12. Style - Unfiltered & Unmatched (Exact)
-    """
-    Ultra HD 4K full body shot of an Indian woman, unfiltered and unmatched,
-    naturally beautiful, no filter, authentic look, glowing skin,
-    wearing stylish outfit, confident pose, natural lighting,
-    professional photography, hyper realistic, sharp focus on face and body,
-    8k resolution, Vogue quality, cinematic.
-    """
+    "Ultra HD 4K full body shot of a stunning Indian woman, unfiltered and unmatched look, natural beauty, glowing skin, wearing casual stylish outfit, city background, natural sunlight, candid pose, professional photography, hyper realistic, sharp focus on face and body, 8k resolution",
+    "Ultra HD 4K full body shot of a fashionable Indian woman, OOTD style, wearing trendy fusion outfit, stylish accessories, urban background, street style photography, confident pose, natural lighting, sharp focus on outfit and face, professional photography, hyper realistic, 8k resolution",
+    "Ultra HD 4K full body shot of an Indian woman in traditional desi wear, beautiful ethnic outfit, traditional jewelry, cultural background, warm golden lighting, graceful pose, natural beauty, sharp focus on face and outfit, professional photography, hyper realistic, 8k resolution",
+    "Ultra HD 4K full body shot of a beautiful Indian woman in casual look, simple yet stylish outfit, natural makeup, glowing skin, outdoor background, natural sunlight, candid smile, relaxed pose, professional photography, hyper realistic, sharp focus on face and body, 8k resolution",
+    "Ultra HD 4K full body shot of a modern Indian woman, contemporary fusion wear, elegant style, urban background, natural lighting, confident pose, sharp focus on face and outfit, professional photography, hyper realistic, 8k resolution",
+    "Ultra HD 4K full body shot of an Indian woman, unfiltered beauty, natural look, no makeup, glowing skin, simple outfit, outdoor natural background, sunlight, candid pose, professional photography, hyper realistic, sharp focus on face, 8k resolution",
+    "Ultra HD 4K full body shot of a stylish Indian woman, street fashion style, trendy outfit, cool accessories, city street background, natural lighting, confident pose, professional photography, hyper realistic, sharp focus on face and outfit, 8k resolution",
+    "Ultra HD 4K full body shot of a desi Indian girl, traditional ethnic wear, beautiful jewelry, natural beauty, cultural background, warm lighting, graceful pose, professional photography, hyper realistic, sharp focus on face and outfit, 8k resolution",
+    "Ultra HD 4K full body shot of a beautiful Indian woman on beach, stylish summer dress, natural beauty, glowing skin, white sand, blue ocean, golden hour lighting, candid pose, professional photography, hyper realistic, sharp focus on face and body, 8k resolution",
+    "Ultra HD 4K full body shot of a modern city girl Indian woman, stylish outfit, urban background, natural lighting, confident pose, sharp focus on face and outfit, professional photography, hyper realistic, 8k resolution"
 ]
 
 # ============================================
-# 🎨 ULTRA HD IMAGE GENERATION - zaraso_phia Style
+# 🎨 IMAGE GENERATION
 # ============================================
 
 def generate_ultra_hd_image(filename="ultra_hd_photo.jpg", max_retries=5):
     """
-    ULTRA HD GIRL PHOTO GENERATE - zaraso_phia Style
+    ULTRA HD IMAGE GENERATE - zaraso_phia Style
     """
     print("🎨 zaraso_phia STYLE में ULTRA HD फोटो बना रहा हूँ...")
     
     for attempt in range(max_retries):
         try:
             prompt = random.choice(PROMPTS)
-            
-            enhanced_prompt = f"{prompt}, exact same style as Instagram influencer, unfiltered look, natural beauty, glowing skin, professional photography, hyper realistic, sharp focus, 8k resolution, photorealistic, National Geographic quality, cinematic lighting, Vogue magazine quality, editorial style"
+            enhanced_prompt = f"{prompt}, professional photography, hyper realistic, sharp focus, 8k resolution, photorealistic, cinematic lighting"
             
             clean_prompt = enhanced_prompt.strip().replace('\n', ' ').replace('  ', ' ')
             encoded_prompt = urllib.parse.quote(clean_prompt[:350])
@@ -189,7 +86,7 @@ def generate_ultra_hd_image(filename="ultra_hd_photo.jpg", max_retries=5):
                 content_size = len(response.content)
                 print(f"📊 Image Size: {content_size/1024:.1f} KB")
                 
-                if content_size > 100000:
+                if content_size > 50000:
                     with open(filename, 'wb') as f:
                         f.write(response.content)
                     print(f"✅ ULTRA HD फोटो बन गई! ({content_size/1024:.1f} KB)")
@@ -241,7 +138,7 @@ def create_placeholder(filename="placeholder.jpg"):
         return filename
 
 # ============================================
-# 👤 ULTRA HD IMAGE ENHANCEMENT
+# 👤 IMAGE ENHANCEMENT
 # ============================================
 
 def enhance_ultra_hd_image(image_path):
@@ -256,14 +153,10 @@ def enhance_ultra_hd_image(image_path):
             print(f"📐 Resizing to 1536x2048...")
             img = img.resize((1536, 2048), Image.Resampling.LANCZOS)
         
-        # Natural Enhancement (zaraso_phia style - unfiltered)
         enhancer = ImageEnhance.Sharpness(img)
         img = enhancer.enhance(1.3)
         
         enhancer = ImageEnhance.Contrast(img)
-        img = enhancer.enhance(1.1)
-        
-        enhancer = ImageEnhance.Color(img)
         img = enhancer.enhance(1.1)
         
         img.save(image_path, quality=100, optimize=False, format='JPEG')
@@ -277,7 +170,7 @@ def enhance_ultra_hd_image(image_path):
         return False
 
 # ============================================
-# 📝 CAPTION - zaraso_phia Style
+# 📝 CAPTION
 # ============================================
 
 def generate_caption():
@@ -316,26 +209,13 @@ Just raw, real and beautiful 🌟
 1️⃣ Rate करो (1-10)
 2️⃣ कहां घूमने जाना है?
 
-#ootd #desivibes #instagood #indianbeauty #ultrahd #4kquality #aifashion #viralreels #explorepage #fyp #styleinspo #fashiongoals #aimodel #digitalfashion #aiartwork #indianwear #fusionfashion #aiartist #virtualfashion #techstyle #instafashion #dailyfashion #fashionista #aicouture #virtualinfluencer #indianfashionblogger #aiforfashion""",
-        
-        f"""{time_text}
-
-🔥 Unfiltered and unmatched 🔥
-
-Stunning, natural, beautiful 💖
-📍 Somewhere in India 🇮🇳
-
-👇 Comment में बताओ:
-❤️ - पसंद आया
-🔥 - और देखना चाहते हो
-
 #ootd #desivibes #instagood #indianbeauty #ultrahd #4kquality #aifashion #viralreels #explorepage #fyp #styleinspo #fashiongoals #aimodel #digitalfashion #aiartwork #indianwear #fusionfashion #aiartist #virtualfashion #techstyle #instafashion #dailyfashion #fashionista #aicouture #virtualinfluencer #indianfashionblogger #aiforfashion"""
     ]
     
     return random.choice(captions)
 
 # ============================================
-# 📤 FACEBOOK POST
+# 📤 FACEBOOK POST - FIXED
 # ============================================
 
 def post_to_facebook(image_path, caption):
@@ -344,11 +224,11 @@ def post_to_facebook(image_path, caption):
     page_id = ''.join(filter(str.isdigit, FB_PAGE_ID))
     url = f"https://graph.facebook.com/{page_id}/photos"
     
+    # ✅ PRIVACY REMOVED - यही Fix है
     payload = {
         'access_token': FB_ACCESS_TOKEN,
         'caption': caption,
-        'published': 'true',
-        'privacy': '{"value": "PUBLIC"}'
+        'published': 'true'
     }
     
     try:
