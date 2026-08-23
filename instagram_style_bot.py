@@ -7,7 +7,9 @@ import urllib.parse
 from datetime import datetime
 from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
-from google import genai  # ✅ Google GenAI SDK
+from PIL import Image, ImageEnhance, ImageFilter
+import replicate  # ✅ चेहरा साफ करने के लिए SDK
+from google import genai  # ✅ लाइव कैप्शन के लिए SDK
 
 # ============================================
 # 🔐 GITHUB SECRETS से VARIABLES लें
@@ -15,16 +17,11 @@ from google import genai  # ✅ Google GenAI SDK
 FB_PAGE_ID = os.environ.get("FB_PAGE_ID")
 FB_ACCESS_TOKEN = os.environ.get("FB_ACCESS_TOKEN")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API")
+REPLICATE_API_TOKEN = os.environ.get("REPLICATE_API_TOKEN")
 
 if not FB_PAGE_ID or not FB_ACCESS_TOKEN:
     print("❌ Facebook Credentials नहीं मिले!")
     sys.exit(1)
-
-print(f"✅ Facebook Page ID: {FB_PAGE_ID[:5]}***")
-if GEMINI_API_KEY:
-    print("✅ GEMINI API Key: लोड हो गई है")
-else:
-    print("⚠️ GEMINI API Key नहीं मिली! ऑफलाइन कैप्शन मोड चालू रहेगा।")
 
 # ============================================
 # 🌐 Session Setup
@@ -41,206 +38,143 @@ session.mount("https://", adapter)
 session.mount("http://", adapter)
 
 # ============================================
-# 🎨 ZARASO_PHIA STYLE PROMPTS
+# 🎨 ZARASO_PHIA STYLE PROMPTS (ऑप्टिमाइज्ड)
 # ============================================
 PROMPTS = [
-    "Ultra HD 4K full body shot of a stunning Indian woman, unfiltered and unmatched look, natural beauty, glowing skin, wearing casual stylish outfit, city background, natural sunlight, candid pose, professional photography, hyper realistic, sharp focus on face and body, 8k resolution",
-    "Ultra HD 4K full body shot of a fashionable Indian woman, OOTD style, wearing trendy fusion outfit, stylish accessories, urban background, street style photography, confident pose, natural lighting, sharp focus on outfit and face, professional photography, hyper realistic, 8k resolution",
-    "Ultra HD 4K full body shot of an Indian woman in traditional desi wear, beautiful ethnic outfit, traditional jewelry, cultural background, warm golden lighting, graceful pose, natural beauty, sharp focus on face and outfit, professional photography, hyper realistic, 8k resolution",
-    "Ultra HD 4K full body shot of a beautiful Indian woman in casual look, simple yet stylish outfit, natural makeup, glowing skin, outdoor background, natural sunlight, candid smile, relaxed pose, professional photography, hyper realistic, sharp focus on face and body, 8k resolution",
-    "Ultra HD 4K full body shot of a modern Indian woman, contemporary fusion wear, elegant style, urban background, natural lighting, confident pose, sharp focus on face and outfit, professional photography, hyper realistic, 8k resolution",
-    "Ultra HD 4K full body shot of an Indian woman, unfiltered beauty, natural look, no makeup, glowing skin, simple outfit, outdoor natural background, sunlight, candid pose, professional photography, hyper realistic, sharp focus on face, 8k resolution",
-    "Ultra HD 4K full body shot of a stylish Indian woman, street fashion style, trendy outfit, cool accessories, city street background, natural lighting, confident pose, professional photography, hyper realistic, sharp focus on face and outfit, 8k resolution",
-    "Ultra HD 4K full body shot of a desi Indian girl, traditional ethnic wear, beautiful jewelry, natural beauty, cultural background, warm lighting, graceful pose, professional photography, hyper realistic, sharp focus on face and outfit, 8k resolution",
-    "Ultra HD 4K full body shot of a beautiful Indian woman on beach, stylish summer dress, natural beauty, glowing skin, white sand, blue ocean, golden hour lighting, candid pose, professional photography, hyper realistic, sharp focus on face and body, 8k resolution",
-    "Ultra HD 4K full body shot of a modern city girl Indian woman, stylish outfit, urban background, natural lighting, confident pose, sharp focus on face and outfit, professional photography, hyper realistic, 8k resolution"
+    "Ultra HD full body portrait of a stunning Indian woman, natural beauty, glowing skin, wearing casual stylish outfit, city background, natural sunlight, candid pose, professional photography, hyper realistic, sharp focus on face, 8k resolution",
+    "Ultra HD full body fashion shot of a fashionable Indian woman, wearing trendy fusion outfit, urban background, street style photography, confident pose, natural lighting, sharp focus on face, hyper realistic, 8k resolution",
+    "Ultra HD full body portrait of an Indian woman in beautiful ethnic outfit, traditional jewelry, cultural background, warm golden lighting, graceful pose, natural beauty, sharp focus on face, hyper realistic, 8k resolution",
+    "Ultra HD full body portrait of a beautiful Indian woman in casual look, simple yet stylish outfit, natural makeup, glowing skin, outdoor background, natural sunlight, candid smile, professional photography, hyper realistic, sharp focus on face, 8k resolution"
 ]
 
 # ============================================
-# 🎨 IMAGE GENERATION
+# ☁️ इमेज को टेम्परेरी क्लाउड पर अपलोड करना (Replicate के लिए आवश्यक)
+# ============================================
+def upload_to_temporary_cloud(image_path):
+    print("⏳ फोटो को प्रोसेसिंग के लिए क्लाउड पर अपलोड कर रहा हूँ...")
+    try:
+        with open(image_path, 'rb') as f:
+            response = session.post("https://tmpfiles.org/api/v1/upload", files={"file": f}, timeout=30)
+        if response.status_code == 200:
+            data = response.json()
+            file_url = data.get("data", {}).get("url")
+            direct_url = file_url.replace("https://tmpfiles.org/", "https://tmpfiles.org/dl/")
+            return direct_url
+    except Exception as e:
+        print(f"⚠️ अपलोड विफल रहा: {e}")
+    return None
+
+# ============================================
+# 🎭 चेहरे को साफ करना (GFPGAN Face Restore)
+# ============================================
+def restore_face_gfpgan(image_path):
+    if not REPLICATE_API_TOKEN:
+        print("⚠️ REPLICATE_API_TOKEN नहीं मिला! फेस रिस्टोरेशन स्किप कर रहा हूँ।")
+        return False
+        
+    cloud_url = upload_to_temporary_cloud(image_path)
+    if not cloud_url:
+        print("⚠️ क्लाउड अपलोड फेल हुआ, फेस रिस्टोर नहीं हो सका।")
+        return False
+        
+    print("🚀 GFPGAN v1.4 द्वारा चेहरे को बिल्कुल साफ और शार्प (Sharp) कर रहा हूँ...")
+    try:
+        client = replicate.Client(api_token=REPLICATE_API_TOKEN)
+        output = client.run(
+            "tencentarc/gfpgan:v1.4",
+            input={
+                "img": cloud_url,
+                "scale": 1.5,
+                "version": "v1.4"
+            }
+        )
+        
+        if output:
+            result_url = output[0] if isinstance(output, list) else output
+            img_resp = session.get(result_url, timeout=60)
+            if img_resp.status_code == 200:
+                with open(image_path, 'wb') as f:
+                    f.write(img_resp.content)
+                print("🎉 सफलता! बिगड़ा हुआ चेहरा पूरी तरह ठीक हो गया है!")
+                return True
+    except Exception as e:
+        print(f"❌ GFPGAN एरर: {e}")
+    return False
+
+# ============================================
+# 🎨 IMAGE GENERATION (1024x1280 standard)
 # ============================================
 def generate_ultra_hd_image(filename="ultra_hd_photo.jpg", max_retries=5):
-    print("🎨 zaraso_phia STYLE में ULTRA HD फोटो बना रहा हूँ...")
+    print("🎨 AI फोटो जनरेट कर रहा हूँ...")
     
     for attempt in range(max_retries):
         try:
             prompt = random.choice(PROMPTS)
-            enhanced_prompt = f"{prompt}, professional photography, hyper realistic, sharp focus, 8k resolution, photorealistic, cinematic lighting"
+            enhanced_prompt = f"{prompt}, professional photography, highly detailed symmetrical face, clear eyes, cinematic lighting"
             
             clean_prompt = enhanced_prompt.strip().replace('\n', ' ').replace('  ', ' ')
             encoded_prompt = urllib.parse.quote(clean_prompt[:350])
             
+            # साइज को 1024x1280 रखा गया है ताकि सर्वर कंप्रेस न करे
             url = (
                 f"https://image.pollinations.ai/prompt/{encoded_prompt}"
-                f"?width=1536&height=2048"
+                f"?width=1024&height=1280"
                 f"&model=flux"
                 f"&nologo=true"
                 f"&seed={random.randint(1, 9999999)}"
-                f"&quality=ultra"
-                f"&enhance=true"
+                f"&quality=high"
+                f"&enhance=false"
             )
             
-            print(f"⏳ Attempt {attempt + 1}/{max_retries}: Generating ULTRA HD...")
-            response = session.get(url, timeout=180)
+            print(f"⏳ प्रयास {attempt + 1}/{max_retries}: जनरेट हो रहा है...")
+            response = session.get(url, timeout=120)
             
             if response.status_code == 200:
-                content_size = len(response.content)
-                print(f"📊 Image Size: {content_size/1024:.1f} KB")
-                
-                if content_size > 50000:
-                    with open(filename, 'wb') as f:
-                        f.write(response.content)
-                    print(f"✅ ULTRA HD फोटो बन गई! ({content_size/1024:.1f} KB)")
-                    enhance_ultra_hd_image(filename)
-                    return filename, prompt
-                else:
-                    print(f"⚠️ Image too small ({content_size/1024:.1f} KB), Retrying...")
-                    time.sleep(3)
-            else:
-                print(f"❌ API Error: {response.status_code}, Retrying...")
-                time.sleep(5)
+                with open(filename, 'wb') as f:
+                    f.write(response.content)
+                print("✅ बेस फोटो डाउनलोड हो गई!")
+                return filename, prompt
                 
         except Exception as e:
-            print(f"❌ Attempt {attempt + 1} Error: {e}")
+            print(f"❌ प्रयास {attempt + 1} एरर: {e}")
             time.sleep(5)
-    
-    return generate_fallback_image(filename), "Fallback Image"
-
-def generate_fallback_image(filename="fallback.jpg"):
-    try:
-        prompt = "Beautiful Indian woman full body portrait, natural beauty, professional photography, 8k quality, sharp focus"
-        encoded = urllib.parse.quote(prompt)
-        url = f"https://image.pollinations.ai/prompt/{encoded}?width=1536&height=2048&model=flux&nologo=true&quality=ultra&enhance=true"
-        response = session.get(url, timeout=180)
-        
-        if response.status_code == 200 and len(response.content) > 50000:
-            with open(filename, 'wb') as f:
-                f.write(response.content)
-            print(f"✅ Fallback Success! ({len(response.content)/1024:.1f} KB)")
-            enhance_ultra_hd_image(filename)
-            return filename
-    except:
-        pass
-    
-    return create_placeholder(filename)
-
-def create_placeholder(filename="placeholder.jpg"):
-    try:
-        from PIL import Image, ImageDraw
-        img = Image.new('RGB', (1536, 2048), color=(255, 220, 240))
-        draw = ImageDraw.Draw(img)
-        draw.text((500, 900), "✨ ULTRA HD ✨", fill=(200, 50, 100))
-        img.save(filename, quality=98)
-        return filename
-    except:
-        with open(filename, 'wb') as f:
-            f.write(b'ULTRA_HD_PLACEHOLDER')
-        return filename
+            
+    return None, None
 
 # ============================================
-# 👤 IMAGE ENHANCEMENT
+# 🖼️ PIL इमेज को और बेहतर बनाना
 # ============================================
-def enhance_ultra_hd_image(image_path):
+def polish_image(image_path):
     try:
-        from PIL import Image, ImageEnhance
-        
         img = Image.open(image_path)
-        width, height = img.size
-        print(f"📐 Current Resolution: {width}x{height}")
-        
-        if width != 1536 or height != 2048:
-            print(f"📐 Resizing to 1536x2048...")
-            img = img.resize((1536, 2048), Image.Resampling.LANCZOS)
-        
-        enhancer = ImageEnhance.Sharpness(img)
-        img = enhancer.enhance(1.3)
-        
+        img = img.filter(ImageFilter.UnsharpMask(radius=1.2, percent=120, threshold=2))
         enhancer = ImageEnhance.Contrast(img)
-        img = enhancer.enhance(1.1)
-        
-        img.save(image_path, quality=100, optimize=False, format='JPEG')
-        new_size = os.path.getsize(image_path)
-        print(f"✅ Enhanced! Size: {new_size/1024:.1f} KB")
-        print(f"✅ Resolution: 1536x2048")
-        return True
-        
+        img = enhancer.enhance(1.05)
+        img.save(image_path, quality=95, optimize=True)
+        print("✅ फोटो पॉलिशिंग पूर्ण!")
     except Exception as e:
-        print(f"⚠️ Enhancement Error: {e}")
-        return False
-
-# ============================================
-# 📝 OFFLINE CAPTION (FALLBACK)
-# ============================================
-def generate_offline_caption():
-    hour = datetime.now().hour
-    if 6 <= hour < 12:
-        time_text = "🌅 Good Morning!"
-    elif 12 <= hour < 17:
-        time_text = "☀️ Afternoon glow"
-    elif 17 <= hour < 21:
-        time_text = "🌆 Evening elegance"
-    else:
-        time_text = "🌙 Night queen"
-    
-    captions = [
-        f"""{time_text}
-
-✨ Unfiltered and unmatched ✨
-
-Natural beauty, no filter needed 💫
-📍 Somewhere in India 🇮🇳
-
-👇 Comment में बताओ:
-❤️ - पसंद आया
-💔 - नहीं पसंद
-
-#ootd #desivibes #instagood #indianbeauty #ultrahd #4kquality #aifashion #viralreels #explorepage #fyp #styleinspo #fashiongoals #aimodel #digitalfashion #aiartwork #indianwear #fusionfashion #aiartist #virtualfashion #techstyle #instafashion #dailyfashion #fashionista #aicouture #virtualinfluencer #indianfashionblogger #aiforfashion""",
-        
-        f"""{time_text}
-
-💫 Unfiltered and unmatched 💫
-
-Just raw, real and beautiful 🌟
-📍 Dream Destination 🏖️
-
-👇 3 Second mein comment karo:
-1️⃣ Rate करो (1-10)
-2️⃣ कहां घूमने जाना है?
-
-#ootd #desivibes #instagood #indianbeauty #ultrahd #4kquality #aifashion #viralreels #explorepage #fyp #styleinspo #fashiongoals #aimodel #digitalfashion #aiartwork #indianwear #fusionfashion #aiartist #virtualfashion #techstyle #instafashion #dailyfashion #fashionista #aicouture #virtualinfluencer #indianfashionblogger #aiforfashion"""
-    ]
-    
-    return random.choice(captions)
+        print(f"⚠️ पॉलिशिंग एरर: {e}")
 
 # ============================================
 # 📝 DYNAMIC GOOGLE AI CAPTION GENERATOR
 # ============================================
 def generate_caption(image_prompt):
-    """
-    Antigravity Agent (Preview) से रीयल-टाइम ट्रेंडिंग डेटा खोजकर कैप्शन बनाता है।
-    """
     if not GEMINI_API_KEY:
-        print("⚠️ GEMINI_API_KEY मौजूद नहीं है। ऑफ़लाइन कैप्शन का उपयोग कर रहा हूँ...")
-        return generate_offline_caption()
+        return "✨ Unfiltered and unmatched beauty. #OOTD #Fashion"
         
     try:
-        print("⏳ Antigravity Agent (Live Search) को सक्रिय कर रहा हूँ...")
+        print("⏳ Antigravity Agent से लाइव कैप्शन बनवा रहा हूँ...")
         client = genai.Client(api_key=GEMINI_API_KEY)
         
         tools = [
             {'type': 'code_execution'},
-            {'type': 'google_search'},
-            {'type': 'url_context'},
+            {'type': 'google_search'}
         ]
         
         prompt_input = (
-            f"Analyze the following photo description and generate a highly engaging social media caption "
-            f"optimized for current trends. "
-            f"Photo description: '{image_prompt}'\n\n"
-            f"Use your 'google_search' tool to find the exact viral hashtags, trend patterns, and emotional "
-            f"captions being used on Instagram and Facebook today for stylish Indian portraits. "
-            f"Structure the response to contain a beautiful opening, a friendly audience poll question (e.g., rating the outfit), "
-            f"and 15-20 highly searched relevant fashion/fusion hashtags."
+            f"Analyze this photo styling: '{image_prompt}'\n"
+            f"Search Google for today's most viral Instagram hashtags and fashion writing styles in India. "
+            f"Write an engaging caption, add a question for the audience to rate the look, and include 15-20 viral hashtags."
         )
         
         interaction = client.interactions.create(
@@ -248,40 +182,26 @@ def generate_caption(image_prompt):
             input=prompt_input,
             background=True,
             tools=tools,
-            environment={
-                'type': 'remote',
-                'network': 'disabled',
-            },
+            environment={'type': 'remote', 'network': 'disabled'},
         )
         
-        print(f"🔍 Agent Research started: {interaction.id}")
-        
-        # 2 मिनट (12 बार * 10 सेकंड) तक का पोलिंग लूप
         attempts = 0
         while attempts < 12:
             interaction = client.interactions.get(interaction.id)
             if interaction.status == "completed":
-                print("✅ एजेंट ने रीयल-टाइम ट्रेंड्स के साथ कैप्शन तैयार किया!")
                 return interaction.output_text
-            elif interaction.status == "failed":
-                print(f"❌ एजेंट रिसर्च विफल: {interaction.error}")
-                break
-                
             time.sleep(10)
             attempts += 1
             
     except Exception as e:
-        print(f"⚠️ एजेंट द्वारा कैप्शन बनाने में समस्या आई: {e}")
-        
-    print("🔄 फॉलबैक: पुराने सुरक्षित ऑफलाइन कैप्शन का उपयोग कर रहा हूँ...")
-    return generate_offline_caption()
+        print(f"⚠️ कैप्शन एजेंट एरर: {e}")
+    return "✨ Unfiltered and unmatched beauty. #OOTD #Fashion"
 
 # ============================================
-# 📤 FACEBOOK POST - FIXED
+# 📤 FACEBOOK POST
 # ============================================
 def post_to_facebook(image_path, caption):
-    print("📤 Facebook पर ULTRA HD पोस्ट कर रहा हूँ...")
-    
+    print("📤 Facebook पर पोस्ट अपलोड कर रहा हूँ...")
     page_id = ''.join(filter(str.isdigit, FB_PAGE_ID))
     url = f"https://graph.facebook.com/{page_id}/photos"
     
@@ -298,84 +218,45 @@ def post_to_facebook(image_path, caption):
         
         if response.status_code == 200:
             post_id = response.json().get('id')
-            print(f"✅ ULTRA HD पोस्ट हो गई! Post ID: {post_id}")
-            
-            time.sleep(3)
-            verify_post(post_id)
+            print(f"✅ पोस्ट सफल! ID: {post_id}")
             return post_id
-        else:
-            print(f"❌ Facebook Error: {response.text[:500]}")
-            return None
-            
     except Exception as e:
-        print(f"⚠️ Facebook Error: {e}")
-        return None
-
-def verify_post(post_id):
-    url = f"https://graph.facebook.com/{post_id}"
-    params = {
-        'access_token': FB_ACCESS_TOKEN,
-        'fields': 'id,message,is_published,permalink_url'
-    }
-    
-    try:
-        response = session.get(url, params=params)
-        if response.status_code == 200:
-            data = response.json()
-            print(f"📊 Post Status:")
-            print(f"  - Published: {data.get('is_published')}")
-            print(f"  - Link: {data.get('permalink_url')}")
-            return data
-        return None
-    except:
-        return None
+        print(f"⚠️ पोस्टिंग त्रुटि: {e}")
+    return None
 
 # ============================================
 # 🚀 MAIN
 # ============================================
 def main():
     print("\n" + "="*60)
-    print("🚀 ZARASO_PHIA STYLE ULTRA HD BOT (Live Google Search AI Agent)")
-    print("📸 Resolution: 1536x2048 (4K)")
+    print("🚀 ZARASO_PHIA STYLE BOT WITH GFPGAN FACE RESTORE")
     print("="*60)
     
     start_time = time.time()
     
-    try:
-        print("\n🎨 STEP 1: ULTRA HD फोटो बना रहा हूँ...")
-        image_path, prompt = generate_ultra_hd_image("ultra_hd_photo.jpg")
-        
-        if not image_path:
-            print("❌ फोटो नहीं बन पाई!")
-            return False
-        
-        print("\n📝 STEP 2: Live Google Search से ट्रेंडिंग कैप्शन बना रहा हूँ...")
-        caption = generate_caption(prompt)
-        
-        print("\n📤 STEP 3: Facebook पर पोस्ट कर रहा हूँ...")
-        post_id = post_to_facebook(image_path, caption)
-        
-        if os.path.exists(image_path):
-            os.remove(image_path)
-            print("🧹 Cleanup Done")
-        
-        elapsed = time.time() - start_time
-        
-        if post_id:
-            print("\n" + "="*60)
-            print("🎉 ULTRA HD POST SUCCESS!")
-            print(f"📐 Resolution: 1536x2048 (4K)")
-            print(f"⏱️ Time: {elapsed:.2f}s")
-            print(f"📱 Post ID: {post_id}")
-            print("="*60)
-            return True
-        else:
-            print("\n❌ पोस्ट नहीं हो पाई!")
-            return False
-            
-    except Exception as e:
-        print(f"\n❌ Error: {e}")
+    image_path, prompt = generate_ultra_hd_image()
+    if not image_path:
+        print("❌ इमेज जनरेट नहीं हो सकी!")
         return False
+        
+    # 🎭 चेहरे को साफ़ करने का जादुई कदम
+    restore_face_gfpgan(image_path)
+    
+    # 🖼️ अंतिम टच (शार्पनेस और कॉन्ट्रास्ट)
+    polish_image(image_path)
+    
+    # 📝 लाइव कैप्शन बनाना
+    caption = generate_caption(prompt)
+    
+    # 📤 पोस्ट करना
+    post_id = post_to_facebook(image_path, caption)
+    
+    if os.path.exists(image_path):
+        os.remove(image_path)
+        print("🧹 Cleanup Done")
+        
+    print(f"⏱️ कुल समय: {time.time() - start_time:.1f}s")
+    return True if post_id else False
 
 if __name__ == "__main__":
     success = main()
