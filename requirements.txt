@@ -1,4 +1,1 @@
-requests
-urllib3
-pillow
-replicate
+pip install instagrapi requests
