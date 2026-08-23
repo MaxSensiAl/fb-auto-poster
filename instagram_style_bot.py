@@ -7,18 +7,24 @@ import urllib.parse
 from datetime import datetime
 from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
+from google import genai  # ✅ Google GenAI SDK
 
 # ============================================
 # 🔐 GITHUB SECRETS से VARIABLES लें
 # ============================================
 FB_PAGE_ID = os.environ.get("FB_PAGE_ID")
 FB_ACCESS_TOKEN = os.environ.get("FB_ACCESS_TOKEN")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API")
 
 if not FB_PAGE_ID or not FB_ACCESS_TOKEN:
     print("❌ Facebook Credentials नहीं मिले!")
     sys.exit(1)
 
 print(f"✅ Facebook Page ID: {FB_PAGE_ID[:5]}***")
+if GEMINI_API_KEY:
+    print("✅ GEMINI API Key: लोड हो गई है")
+else:
+    print("⚠️ GEMINI API Key नहीं मिली! ऑफलाइन कैप्शन मोड चालू रहेगा।")
 
 # ============================================
 # 🌐 Session Setup
@@ -37,7 +43,6 @@ session.mount("http://", adapter)
 # ============================================
 # 🎨 ZARASO_PHIA STYLE PROMPTS
 # ============================================
-
 PROMPTS = [
     "Ultra HD 4K full body shot of a stunning Indian woman, unfiltered and unmatched look, natural beauty, glowing skin, wearing casual stylish outfit, city background, natural sunlight, candid pose, professional photography, hyper realistic, sharp focus on face and body, 8k resolution",
     "Ultra HD 4K full body shot of a fashionable Indian woman, OOTD style, wearing trendy fusion outfit, stylish accessories, urban background, street style photography, confident pose, natural lighting, sharp focus on outfit and face, professional photography, hyper realistic, 8k resolution",
@@ -54,11 +59,7 @@ PROMPTS = [
 # ============================================
 # 🎨 IMAGE GENERATION
 # ============================================
-
 def generate_ultra_hd_image(filename="ultra_hd_photo.jpg", max_retries=5):
-    """
-    ULTRA HD IMAGE GENERATE - zaraso_phia Style
-    """
     print("🎨 zaraso_phia STYLE में ULTRA HD फोटो बना रहा हूँ...")
     
     for attempt in range(max_retries):
@@ -106,7 +107,6 @@ def generate_ultra_hd_image(filename="ultra_hd_photo.jpg", max_retries=5):
     return generate_fallback_image(filename), "Fallback Image"
 
 def generate_fallback_image(filename="fallback.jpg"):
-    """Fallback Image"""
     try:
         prompt = "Beautiful Indian woman full body portrait, natural beauty, professional photography, 8k quality, sharp focus"
         encoded = urllib.parse.quote(prompt)
@@ -140,7 +140,6 @@ def create_placeholder(filename="placeholder.jpg"):
 # ============================================
 # 👤 IMAGE ENHANCEMENT
 # ============================================
-
 def enhance_ultra_hd_image(image_path):
     try:
         from PIL import Image, ImageEnhance
@@ -170,10 +169,9 @@ def enhance_ultra_hd_image(image_path):
         return False
 
 # ============================================
-# 📝 CAPTION
+# 📝 OFFLINE CAPTION (FALLBACK)
 # ============================================
-
-def generate_caption():
+def generate_offline_caption():
     hour = datetime.now().hour
     if 6 <= hour < 12:
         time_text = "🌅 Good Morning!"
@@ -215,16 +213,78 @@ Just raw, real and beautiful 🌟
     return random.choice(captions)
 
 # ============================================
+# 📝 DYNAMIC GOOGLE AI CAPTION GENERATOR
+# ============================================
+def generate_caption(image_prompt):
+    """
+    Antigravity Agent (Preview) से रीयल-टाइम ट्रेंडिंग डेटा खोजकर कैप्शन बनाता है।
+    """
+    if not GEMINI_API_KEY:
+        print("⚠️ GEMINI_API_KEY मौजूद नहीं है। ऑफ़लाइन कैप्शन का उपयोग कर रहा हूँ...")
+        return generate_offline_caption()
+        
+    try:
+        print("⏳ Antigravity Agent (Live Search) को सक्रिय कर रहा हूँ...")
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        
+        tools = [
+            {'type': 'code_execution'},
+            {'type': 'google_search'},
+            {'type': 'url_context'},
+        ]
+        
+        prompt_input = (
+            f"Analyze the following photo description and generate a highly engaging social media caption "
+            f"optimized for current trends. "
+            f"Photo description: '{image_prompt}'\n\n"
+            f"Use your 'google_search' tool to find the exact viral hashtags, trend patterns, and emotional "
+            f"captions being used on Instagram and Facebook today for stylish Indian portraits. "
+            f"Structure the response to contain a beautiful opening, a friendly audience poll question (e.g., rating the outfit), "
+            f"and 15-20 highly searched relevant fashion/fusion hashtags."
+        )
+        
+        interaction = client.interactions.create(
+            agent='antigravity-preview-05-2026',
+            input=prompt_input,
+            background=True,
+            tools=tools,
+            environment={
+                'type': 'remote',
+                'network': 'disabled',
+            },
+        )
+        
+        print(f"🔍 Agent Research started: {interaction.id}")
+        
+        # 2 मिनट (12 बार * 10 सेकंड) तक का पोलिंग लूप
+        attempts = 0
+        while attempts < 12:
+            interaction = client.interactions.get(interaction.id)
+            if interaction.status == "completed":
+                print("✅ एजेंट ने रीयल-टाइम ट्रेंड्स के साथ कैप्शन तैयार किया!")
+                return interaction.output_text
+            elif interaction.status == "failed":
+                print(f"❌ एजेंट रिसर्च विफल: {interaction.error}")
+                break
+                
+            time.sleep(10)
+            attempts += 1
+            
+    except Exception as e:
+        print(f"⚠️ एजेंट द्वारा कैप्शन बनाने में समस्या आई: {e}")
+        
+    print("🔄 फॉलबैक: पुराने सुरक्षित ऑफलाइन कैप्शन का उपयोग कर रहा हूँ...")
+    return generate_offline_caption()
+
+# ============================================
 # 📤 FACEBOOK POST - FIXED
 # ============================================
-
 def post_to_facebook(image_path, caption):
     print("📤 Facebook पर ULTRA HD पोस्ट कर रहा हूँ...")
     
     page_id = ''.join(filter(str.isdigit, FB_PAGE_ID))
     url = f"https://graph.facebook.com/{page_id}/photos"
     
-    # ✅ PRIVACY REMOVED - यही Fix है
     payload = {
         'access_token': FB_ACCESS_TOKEN,
         'caption': caption,
@@ -273,10 +333,9 @@ def verify_post(post_id):
 # ============================================
 # 🚀 MAIN
 # ============================================
-
 def main():
     print("\n" + "="*60)
-    print("🚀 ZARASO_PHIA STYLE ULTRA HD BOT")
+    print("🚀 ZARASO_PHIA STYLE ULTRA HD BOT (Live Google Search AI Agent)")
     print("📸 Resolution: 1536x2048 (4K)")
     print("="*60)
     
@@ -290,8 +349,8 @@ def main():
             print("❌ फोटो नहीं बन पाई!")
             return False
         
-        print("\n📝 STEP 2: कैप्शन बना रहा हूँ...")
-        caption = generate_caption()
+        print("\n📝 STEP 2: Live Google Search से ट्रेंडिंग कैप्शन बना रहा हूँ...")
+        caption = generate_caption(prompt)
         
         print("\n📤 STEP 3: Facebook पर पोस्ट कर रहा हूँ...")
         post_id = post_to_facebook(image_path, caption)
