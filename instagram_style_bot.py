@@ -8,7 +8,6 @@ from datetime import datetime
 from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
 from PIL import Image, ImageEnhance, ImageFilter
-import replicate  # ✅ चेहरा साफ करने के लिए SDK
 from google import genai  # ✅ लाइव कैप्शन के लिए SDK
 
 # ============================================
@@ -17,7 +16,6 @@ from google import genai  # ✅ लाइव कैप्शन के लिए
 FB_PAGE_ID = os.environ.get("FB_PAGE_ID")
 FB_ACCESS_TOKEN = os.environ.get("FB_ACCESS_TOKEN")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API")
-REPLICATE_API_TOKEN = os.environ.get("REPLICATE_API_TOKEN")
 
 if not FB_PAGE_ID or not FB_ACCESS_TOKEN:
     print("❌ Facebook Credentials नहीं मिले!")
@@ -38,86 +36,30 @@ session.mount("https://", adapter)
 session.mount("http://", adapter)
 
 # ============================================
-# 🎨 ZARASO_PHIA STYLE PROMPTS
+# 🎨 WAIST-UP STYLE PROMPTS (चेहरा साफ रखने के लिए कमर से ऊपर के शॉट्स)
 # ============================================
 PROMPTS = [
-    "Ultra HD full body portrait of a stunning Indian woman, natural beauty, glowing skin, wearing casual stylish outfit, city background, natural sunlight, candid pose, professional photography, hyper realistic, sharp focus on face, 8k resolution",
-    "Ultra HD full body fashion shot of a fashionable Indian woman, wearing trendy fusion outfit, urban background, street style photography, confident pose, natural lighting, sharp focus on face, hyper realistic, 8k resolution",
-    "Ultra HD full body portrait of an Indian woman in beautiful ethnic outfit, traditional jewelry, cultural background, warm golden lighting, graceful pose, natural beauty, sharp focus on face, hyper realistic, 8k resolution",
-    "Ultra HD full body portrait of a beautiful Indian woman in casual look, simple yet stylish outfit, natural makeup, glowing skin, outdoor background, natural sunlight, candid smile, professional photography, hyper realistic, sharp focus on face, 8k resolution"
+    "Ultra HD waist-up portrait of a stunning Indian woman standing gracefully, natural beauty, highly detailed symmetrical facial features, realistic clear eyes, glowing skin, wearing casual stylish outfit, outdoor background, natural sunlight, professional photography, hyper realistic, sharp focus on face, 8k resolution",
+    "Ultra HD waist-up fashion editorial shot of a fashionable Indian woman, highly detailed symmetrical face, elegant modern fusion wear, stylish jewelry, soft natural lighting, confident pose, professional studio quality, sharp focus, hyper realistic, 8k resolution",
+    "Ultra HD waist-up portrait of a beautiful Indian woman in rich traditional ethnic wear, detailed saree, beautiful gold jewelry, highly focused symmetrical face, glowing skin, warm golden hour lighting, graceful look, professional portrait, 8k resolution",
+    "Ultra HD waist-up portrait of a modern Indian girl, contemporary styling, minimal makeup, natural clear skin, highly detailed realistic eyes, indoor cafe background, soft ambient lighting, candid pose, sharp focus, professional photography, 8k resolution"
 ]
-
-# ============================================
-# ☁️ इमेज को टेम्परेरी क्लाउड पर अपलोड करना (Replicate के लिए आवश्यक)
-# ============================================
-def upload_to_temporary_cloud(image_path):
-    print("⏳ फोटो को प्रोसेसिंग के लिए क्लाउड पर अपलोड कर रहा हूँ...")
-    try:
-        with open(image_path, 'rb') as f:
-            response = session.post("https://tmpfiles.org/api/v1/upload", files={"file": f}, timeout=30)
-        if response.status_code == 200:
-            data = response.json()
-            file_url = data.get("data", {}).get("url")
-            direct_url = file_url.replace("https://tmpfiles.org/", "https://tmpfiles.org/dl/")
-            return direct_url
-    except Exception as e:
-        print(f"⚠️ अपलोड विफल रहा: {e}")
-    return None
-
-# ============================================
-# 🎭 चेहरे को साफ करना (GFPGAN Face Restore - FIXED VERSION)
-# ============================================
-def restore_face_gfpgan(image_path):
-    if not REPLICATE_API_TOKEN:
-        print("⚠️ REPLICATE_API_TOKEN नहीं मिला! फेस रिस्टोरेशन स्किप कर रहा हूँ।")
-        return False
-        
-    cloud_url = upload_to_temporary_cloud(image_path)
-    if not cloud_url:
-        print("⚠️ क्लाउड अपलोड फेल हुआ, फेस रिस्टोर नहीं हो सका।")
-        return False
-        
-    print("🚀 GFPGAN v1.4 द्वारा चेहरे को बिल्कुल साफ और शार्प (Sharp) कर रहा हूँ...")
-    try:
-        client = replicate.Client(api_token=REPLICATE_API_TOKEN)
-        
-        # ✅ 'tencentarc/gfpgan' का सटीक और स्थिर वर्जन हैश
-        output = client.run(
-            "tencentarc/gfpgan:9a42a3511d0de2e9b4ab1c0af640f302b5064857453dbe6f62e219ef9243728f",
-            input={
-                "img": cloud_url,
-                "scale": 2,
-                "version": "v1.4"
-            }
-        )
-        
-        if output:
-            result_url = output[0] if isinstance(output, list) else output
-            img_resp = session.get(result_url, timeout=60)
-            if img_resp.status_code == 200:
-                with open(image_path, 'wb') as f:
-                    f.write(img_resp.content)
-                print("🎉 सफलता! बिगड़ा हुआ चेहरा पूरी तरह ठीक हो गया है!")
-                return True
-    except Exception as e:
-        print(f"❌ GFPGAN एरर: {e}")
-    return False
 
 # ============================================
 # 🎨 IMAGE GENERATION
 # ============================================
 def generate_ultra_hd_image(filename="ultra_hd_photo.jpg", max_retries=5):
-    print("🎨 AI फोटो जनरेट कर रहा हूँ...")
+    print("🎨 [जुगाड़ तकनीक] कमर से ऊपर का क्लोज-अप शॉट जनरेट कर रहा हूँ...")
     
     for attempt in range(max_retries):
         try:
             prompt = random.choice(PROMPTS)
-            enhanced_prompt = f"{prompt}, professional photography, highly detailed symmetrical face, clear eyes, cinematic lighting"
+            enhanced_prompt = f"{prompt}, dslr camera, extremely detailed, photorealistic, cinematic lighting, sharp focus on face"
             
             clean_prompt = enhanced_prompt.strip().replace('\n', ' ').replace('  ', ' ')
             encoded_prompt = urllib.parse.quote(clean_prompt[:350])
             
-            # साइज 1024x1280 (4:5 Ratio)
+            # 1024x1280 (4:5 Ratio) - फेसबुक और इंस्टाग्राम के लिए एकदम परफेक्ट
             url = (
                 f"https://image.pollinations.ai/prompt/{encoded_prompt}"
                 f"?width=1024&height=1280"
@@ -128,13 +70,13 @@ def generate_ultra_hd_image(filename="ultra_hd_photo.jpg", max_retries=5):
                 f"&enhance=false"
             )
             
-            print(f"⏳ प्रयास {attempt + 1}/{max_retries}: जनरेट हो रहा है...")
+            print(f"⏳ प्रयास {attempt + 1}/{max_retries}: डाउनलोड हो रहा है...")
             response = session.get(url, timeout=120)
             
             if response.status_code == 200:
                 with open(filename, 'wb') as f:
                     f.write(response.content)
-                print("✅ बेस फोटो डाउनलोड हो गई!")
+                print("✅ बेस फोटो सफलतापूर्वक प्राप्त हुई!")
                 return filename, prompt
                 
         except Exception as e:
@@ -144,18 +86,32 @@ def generate_ultra_hd_image(filename="ultra_hd_photo.jpg", max_retries=5):
     return None, None
 
 # ============================================
-# 🖼️ PIL इमेज को और बेहतर बनाना
+# 🖼️ LOCAL HD ENHANCEMENT (Pillow के जरिए 2K शार्पनेस देना)
 # ============================================
-def polish_image(image_path):
+def enhance_image_locally(image_path):
+    print("🪄 स्थानीय टूल्स (PIL) से इमेज को 2K शार्पनेस और ब्राइटनेस दे रहा हूँ...")
     try:
         img = Image.open(image_path)
-        img = img.filter(ImageFilter.UnsharpMask(radius=1.2, percent=120, threshold=2))
+        
+        # 1. अनशार्प मास्क फ़िल्टर (बारीक विवरणों को निखारने के लिए)
+        img = img.filter(ImageFilter.UnsharpMask(radius=1.5, percent=130, threshold=2))
+        
+        # 2. शार्पनेस बढ़ाना
+        enhancer = ImageEnhance.Sharpness(img)
+        img = enhancer.enhance(1.2)
+        
+        # 3. थोड़ा कॉन्ट्रास्ट बढ़ाना (रंगों को निखारने के लिए)
         enhancer = ImageEnhance.Contrast(img)
-        img = enhancer.enhance(1.05)
-        img.save(image_path, quality=95, optimize=True)
-        print("✅ फोटो पॉलिशिंग पूर्ण!")
+        img = enhancer.enhance(1.04)
+        
+        # 4. कलर सैचुरेशन को थोड़ा सा निखारना
+        enhancer = ImageEnhance.Color(img)
+        img = enhancer.enhance(1.02)
+        
+        img.save(image_path, quality=98, optimize=True)
+        print("✅ लोकल इमेज एन्हांसमेंट पूर्ण!")
     except Exception as e:
-        print(f"⚠️ पॉलिशिंग एरर: {e}")
+        print(f"⚠️ लोकल एनहांसमेंट में समस्या: {e}")
 
 # ============================================
 # 📝 DYNAMIC GOOGLE AI CAPTION GENERATOR
@@ -231,26 +187,24 @@ def post_to_facebook(image_path, caption):
 # ============================================
 def main():
     print("\n" + "="*60)
-    print("🚀 ZARASO_PHIA STYLE BOT WITH FIXED GFPGAN FACE RESTORE")
+    print("🚀 100% FREE AUTO POSTER BOT (NO PAID API REQUIRED)")
     print("="*60)
     
     start_time = time.time()
     
+    # 1. फ्री जनरेशन (Waist-Up Portrait)
     image_path, prompt = generate_ultra_hd_image()
     if not image_path:
         print("❌ इमेज जनरेट नहीं हो सकी!")
         return False
-        
-    # 🎭 चेहरे को साफ़ करने का सुधारा गया कदम
-    restore_face_gfpgan(image_path)
     
-    # 🖼️ अंतिम टच (शार्पनेस और कॉन्ट्रास्ट)
-    polish_image(image_path)
+    # 2. लोकल एनहांसमेंट (Pillow के जरिए)
+    enhance_image_locally(image_path)
     
-    # 📝 लाइव कैप्शन बनाना
+    # 3. लाइव कैप्शन बनाना
     caption = generate_caption(prompt)
     
-    # 📤 पोस्ट करना
+    # 4. फेसबुक पर पोस्ट करना
     post_id = post_to_facebook(image_path, caption)
     
     if os.path.exists(image_path):
